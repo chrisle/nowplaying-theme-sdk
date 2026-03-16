@@ -2,10 +2,16 @@ import { useState, useCallback } from "react";
 import { EnrichedTrack } from "./types";
 import { MOCK_TRACKS } from "./mock-data";
 import { Clean } from "./themes/clean";
+import { Asot2K3 } from "./themes/asot-2k3";
+import { Kinetik3D } from "./themes/kinetik-3d";
+import { Sideways } from "./themes/sideways";
 
 /** Registry of available themes for the selector */
 const THEMES = [
   { id: "clean", name: "Clean", Component: Clean },
+  { id: "asot-2k3", name: "ASOT 2K3", Component: Asot2K3 },
+  { id: "kinetik-3d", name: "Kinetik 3D", Component: Kinetik3D },
+  { id: "sideways", name: "Sideways", Component: Sideways },
 ] as const;
 
 export default function App() {

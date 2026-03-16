@@ -33,10 +33,10 @@ function SidewaysTheme({
   artistBackgroundColor = "#ffffff",
   titleTextColor = "#ffffff",
   artistTextColor = "#000000",
-  backgroundColor = "#000000",
+  backgroundColor = "transparent",
   labelTextColor = "#ffffff",
-  fontFamily = "Heebo",
-  fontSize = { title: 30, artist: 30, label: 24 },
+  fontFamily = "'Heebo', sans-serif",
+  fontSize = { title: 38, artist: 40, label: 30 },
 }: ThemeRenderProps & SidewaysThemeProps) {
   const titleControl = useAnimation();
   const artistControl = useAnimation();
@@ -45,112 +45,67 @@ function SidewaysTheme({
   const wrapper2Control = useAnimation();
 
   useEffect(() => {
-    if (!isAnimating) {
-      // Reset to initial state
-      wrapper1Control.start({ opacity: 1 });
-      wrapper2Control.start({ opacity: 1 });
-      titleControl.start({ x: 0, y: 0, opacity: 1 });
-      artistControl.start({ x: 0, y: 0, opacity: 1 });
-      labelControl.start({ x: 0, y: 0, opacity: 1 });
-      return;
+    if (isAnimating) {
+      // EXIT: Title/artist slide down, label slides up, then prep for enter
+      const runExit = async () => {
+        await Promise.all([
+          titleControl.start({
+            y: 200,
+            transition: { duration: 0.5, ease: inCubic },
+          }),
+          artistControl.start({
+            y: 200,
+            transition: { duration: 0.5, ease: inCubic },
+          }),
+          labelControl.start({
+            y: -100,
+            transition: { duration: 0.5, ease: inCubic },
+          }),
+        ]);
+
+        // Hide wrappers and position for enter (off-screen right)
+        await Promise.all([
+          wrapper1Control.start({ opacity: 0, transition: { duration: 0 } }),
+          wrapper2Control.start({ opacity: 0, transition: { duration: 0 } }),
+          titleControl.start({ x: "30rem", y: 0, transition: { duration: 0 } }),
+          artistControl.start({ x: "40rem", y: 0, transition: { duration: 0 } }),
+          labelControl.start({ y: 0, opacity: 0, transition: { duration: 0 } }),
+        ]);
+      };
+      runExit();
+    } else {
+      // ENTER: Title/artist slide in from right, label fades in
+      const runEnter = async () => {
+        // Slide title and artist in from right
+        await Promise.all([
+          wrapper1Control.start({
+            opacity: 1,
+            transition: { duration: 0.5, ease: inCubic },
+          }),
+          titleControl.start({
+            x: 0,
+            transition: { duration: 0.65, ease: inQuad },
+          }),
+          artistControl.start({
+            x: 0,
+            transition: { duration: 0.65, ease: inQuad },
+          }),
+        ]);
+
+        // Fade in label
+        await Promise.all([
+          wrapper2Control.start({
+            opacity: 1,
+            transition: { duration: 0.5, ease: inCubic },
+          }),
+          labelControl.start({
+            opacity: 1,
+            transition: { duration: 0.5, ease: inCubic },
+          }),
+        ]);
+      };
+      runEnter();
     }
-
-    const runAnimation = async () => {
-      // Phase 1: Fade in at initial position
-      await Promise.all([
-        titleControl.start({
-          opacity: 1,
-          transition: { duration: 0.5 },
-        }),
-        artistControl.start({
-          opacity: 1,
-          transition: { duration: 0.5 },
-        }),
-        titleControl.start({
-          y: 0,
-          transition: { duration: 0.5 },
-        }),
-        artistControl.start({
-          x: 0,
-          transition: { duration: 0.5 },
-        }),
-      ]);
-
-      // Phase 2: Move down and fade (exit)
-      await Promise.all([
-        titleControl.start({
-          y: 200,
-          transition: { duration: 0.5, ease: inCubic },
-        }),
-        artistControl.start({
-          y: 200,
-          transition: { duration: 0.5, ease: inCubic },
-        }),
-        labelControl.start({
-          y: 200,
-          transition: { duration: 0.5, ease: inCubic },
-        }),
-      ]);
-
-      // Phase 3: Hide wrappers while repositioning
-      await Promise.all([
-        wrapper1Control.start({
-          opacity: 0,
-          transition: { duration: 0 },
-        }),
-        wrapper2Control.start({
-          opacity: 0,
-          transition: { duration: 0 },
-        }),
-      ]);
-
-      // Phase 4: Reset position off-screen
-      await Promise.all([
-        titleControl.start({
-          x: "30rem",
-          y: 0,
-          transition: { duration: 0 },
-        }),
-        labelControl.start({
-          x: 0,
-          y: 0,
-          transition: { duration: 0 },
-        }),
-        artistControl.start({
-          x: "40rem",
-          y: 0,
-          transition: { duration: 0 },
-        }),
-      ]);
-
-      // Phase 5: Move back on-screen
-      await Promise.all([
-        titleControl.start({
-          x: 0,
-          y: 0,
-          transition: { duration: 0.65, ease: inQuad },
-        }),
-        artistControl.start({
-          x: 0,
-          y: 0,
-          transition: { duration: 0.65, ease: inQuad },
-        }),
-        wrapper1Control.start({
-          opacity: 1,
-          transition: { duration: 0.5, ease: inCubic },
-        }),
-      ]);
-
-      // Phase 6: Show second wrapper
-      await Promise.all([
-        wrapper2Control.start({
-          opacity: 1,
-          transition: { duration: 0.5, ease: inCubic },
-        }),
-      ]);
-    };
-
-    runAnimation();
   }, [
     isAnimating,
     titleControl,
@@ -162,9 +117,8 @@ function SidewaysTheme({
 
   return (
     <div
-      className="relative w-full p-2.5"
+      className="relative w-full"
       style={{
-        minHeight: "200px",
         fontFamily,
         backgroundColor,
       }}
@@ -173,7 +127,7 @@ function SidewaysTheme({
       <motion.div
         animate={wrapper1Control}
         initial={{ opacity: 1 }}
-        className="flex flex-col items-start w-screen overflow-hidden"
+        className="flex flex-col items-start overflow-hidden"
       >
         <motion.div
           animate={titleControl}
@@ -183,7 +137,7 @@ function SidewaysTheme({
             padding: "5px 6px 7px 5px",
             backgroundColor: titleBackgroundColor,
             fontSize: `${fontSize.title}px`,
-            lineHeight: `${fontSize.title}px`,
+            lineHeight: "44px",
             fontWeight: "900",
             letterSpacing: "1px",
             whiteSpace: "nowrap",
@@ -216,17 +170,16 @@ function SidewaysTheme({
         animate={wrapper2Control}
         initial={{ opacity: 1 }}
         className="flex flex-col items-start overflow-hidden"
+        style={{ marginTop: "10px" }}
       >
         <motion.div
           animate={labelControl}
           initial={{ opacity: 1, y: 0 }}
-          className="flex pt-[5px] pb-0"
+          className="flex"
           style={{
             fontSize: `${fontSize.label}px`,
             lineHeight: `${fontSize.label}px`,
-            fontStyle: "normal",
             fontWeight: "300",
-            textTransform: "uppercase",
             whiteSpace: "nowrap",
             color: labelTextColor,
           }}
@@ -268,7 +221,7 @@ export function Sideways({
   return (
     <BaseOverlay
       track={track}
-      animationTiming={{ exitDuration: 1200, enterDuration: 1200 }}
+      animationTiming={{ exitDuration: 550, enterDuration: 50 }}
       renderTheme={(props) => (
         <SidewaysTheme
           {...props}

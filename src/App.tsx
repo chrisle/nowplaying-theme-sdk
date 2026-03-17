@@ -5,6 +5,7 @@ import { Clean } from "./themes/clean";
 import { Asot2K3 } from "./themes/asot-2k3";
 import { Kinetik3D } from "./themes/kinetik-3d";
 import { Sideways } from "./themes/sideways";
+import { Glitched } from "./themes/glitched";
 
 type FieldType = "color" | "boolean" | "number" | "string" | "range";
 
@@ -50,6 +51,14 @@ const THEME_FIELDS: Record<string, FieldDef[]> = {
     { key: "fontSize", label: "Title Size", type: "number", defaultValue: 50, min: 10, max: 120 },
     { key: "artistFontSize", label: "Artist Size", type: "number", defaultValue: 40, min: 10, max: 120 },
   ],
+  glitched: [
+    { key: "accentColor", label: "Accent Color", type: "color", defaultValue: "#aaaaaa" },
+    { key: "textColor", label: "Text Color", type: "color", defaultValue: "#ffffff" },
+    { key: "fontFamily", label: "Font Family", type: "string", defaultValue: "'VT323', 'Courier New', monospace" },
+    { key: "fontSize.title", label: "Title Size", type: "number", defaultValue: 60, min: 10, max: 120 },
+    { key: "fontSize.artist", label: "Artist Size", type: "number", defaultValue: 36, min: 10, max: 120 },
+    { key: "fontSize.label", label: "Label Size", type: "number", defaultValue: 22, min: 10, max: 120 },
+  ],
   sideways: [
     { key: "titleBackgroundColor", label: "Title BG", type: "color", defaultValue: "#ff0000" },
     { key: "artistBackgroundColor", label: "Artist BG", type: "color", defaultValue: "#ffffff" },
@@ -88,6 +97,7 @@ const THEMES = [
   { id: "asot-2k3", name: "ASOT 2K3", Component: Asot2K3 },
   { id: "kinetik-3d", name: "Kinetik 3D", Component: Kinetik3D },
   { id: "sideways", name: "Sideways", Component: Sideways },
+  { id: "glitched", name: "Glitched", Component: Glitched },
 ] as const;
 
 function isValidHex(s: string): boolean {

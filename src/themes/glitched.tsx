@@ -163,12 +163,77 @@ function GlitchTextBlock({
   );
 }
 
+// ── GlitchArtBlock ────────────────────────────────────────────────────
+// Same slice technique as GlitchTextBlock but for album artwork.
+
+const ART_SIZE = 170;
+
+function GlitchArtBlock({ src, phase, delayMs = 0 }: { src?: string; phase: GlitchPhase; delayMs?: number }) {
+  const [localPhase, setLocalPhase] = useState<GlitchPhase>(phase);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    if (delayMs === 0) {
+      setLocalPhase(phase);
+      return;
+    }
+    const t = setTimeout(() => setLocalPhase(phase), delayMs);
+    return () => clearTimeout(t);
+  }, [phase, delayMs]);
+
+  if (!src || imageError) {
+    return (
+      <div
+        className="flex-shrink-0 bg-zinc-900 flex items-center justify-center"
+        style={{ width: ART_SIZE, height: ART_SIZE }}
+      >
+        <svg className="w-16 h-16 text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="flex-shrink-0"
+      style={{ width: ART_SIZE, height: ART_SIZE, display: "grid", gridTemplate: "1fr / 1fr" }}
+    >
+      {Array.from({ length: NUM_SLICES }, (_, i) => {
+        const top = (i / NUM_SLICES) * 100;
+        const bottom = ((NUM_SLICES - i - 1) / NUM_SLICES) * 100;
+        return (
+          <motion.div
+            key={i}
+            style={{
+              gridArea: "1 / 1 / 2 / 2",
+              clipPath: `inset(${top}% 0 ${bottom}% 0)`,
+            }}
+            variants={SLICE_VARIANTS[i]}
+            animate={localPhase}
+            initial="rest"
+          >
+            <img
+              src={src}
+              alt="Album artwork"
+              style={{ width: ART_SIZE, height: ART_SIZE, objectFit: "cover", display: "block" }}
+              onError={() => setImageError(true)}
+            />
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Custom props ──────────────────────────────────────────────────────
 
 interface GlitchedThemeProps {
   accentColor?: string;
   textColor?: string;
   fontFamily?: string;
+  showArtwork?: boolean;
   fontSize?: {
     title?: number;
     artist?: number;
@@ -182,10 +247,12 @@ function GlitchedTheme({
   title,
   artist,
   label,
+  artwork,
   isAnimating,
   accentColor = "#00ff41",
   textColor = "#ffffff",
   fontFamily = "'VT323', 'Courier New', monospace",
+  showArtwork = true,
   fontSize = {},
 }: ThemeRenderProps & GlitchedThemeProps) {
   const [phase, setPhase] = useState<GlitchPhase>("rest");
@@ -227,7 +294,7 @@ function GlitchedTheme({
   }, [isAnimating]);
 
   return (
-    <div className="relative flex flex-col" style={{ fontFamily, gap: "3px" }}>
+    <div className="relative flex flex-row items-center gap-6" style={{ fontFamily }}>
       {/* Scanlines */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -237,6 +304,12 @@ function GlitchedTheme({
           zIndex: 10,
         }}
       />
+
+      {/* Album artwork */}
+      {showArtwork && <GlitchArtBlock src={artwork} phase={phase} />}
+
+      {/* Text blocks */}
+      <div className="flex flex-col" style={{ gap: "3px" }}>
 
       {/* Artist */}
       <GlitchTextBlock
@@ -273,6 +346,7 @@ function GlitchedTheme({
           phase={phase}
         />
       )}
+      </div>
     </div>
   );
 }
@@ -284,6 +358,7 @@ interface GlitchedProps {
   accentColor?: string;
   textColor?: string;
   fontFamily?: string;
+  showArtwork?: boolean;
   fontSize?: {
     title?: number;
     artist?: number;
@@ -296,6 +371,7 @@ export function Glitched({
   accentColor,
   textColor,
   fontFamily,
+  showArtwork,
   fontSize,
 }: GlitchedProps) {
   return (
@@ -311,6 +387,7 @@ export function Glitched({
           accentColor={accentColor}
           textColor={textColor}
           fontFamily={fontFamily}
+          showArtwork={showArtwork}
           fontSize={fontSize}
         />
       )}

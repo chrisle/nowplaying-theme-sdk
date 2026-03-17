@@ -52,6 +52,7 @@ const THEME_FIELDS: Record<string, FieldDef[]> = {
     { key: "artistFontSize", label: "Artist Size", type: "number", defaultValue: 40, min: 10, max: 120 },
   ],
   glitched: [
+    { key: "showArtwork", label: "Show Artwork", type: "boolean", defaultValue: true },
     { key: "accentColor", label: "Accent Color", type: "color", defaultValue: "#aaaaaa" },
     { key: "textColor", label: "Text Color", type: "color", defaultValue: "#ffffff" },
     { key: "fontFamily", label: "Font Family", type: "string", defaultValue: "'VT323', 'Courier New', monospace" },

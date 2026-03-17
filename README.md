@@ -14,6 +14,8 @@ Open the URL shown in your terminal. You'll see the Clean theme rendering mock t
 
 ## Creating a New Theme
 
+> Are you using an **Agentic AI coding tool such as Claude Code or Codex??**. You can run `/create-theme` in your agent prompt to create your theme through an interactive AI prompt!
+
 ### 1. Create your theme file
 
 Create a new file in `src/themes/`, e.g. `src/themes/my-theme.tsx`:

@@ -5,7 +5,6 @@ import { BaseOverlay, ThemeRenderProps } from "../components/base-overlay";
 
 // Custom easing for kinetik3d animations
 const customEase = [0.19, 1, 0.22, 1] as const;
-const inOutExpo = "easeInOut" as const;
 
 interface Kinetik3DThemeProps {
   redColor?: string;
@@ -49,19 +48,6 @@ function Kinetik3DTheme({
   const artistBControl = useAnimation();
   const artistO1Control = useAnimation();
   const artistO2Control = useAnimation();
-
-  const allControls = [
-    titleRControl,
-    titleGControl,
-    titleBControl,
-    titleO1Control,
-    titleO2Control,
-    artistRControl,
-    artistGControl,
-    artistBControl,
-    artistO1Control,
-    artistO2Control,
-  ];
 
   const titleControls = [titleRControl, titleGControl, titleBControl, titleO1Control, titleO2Control];
   const artistControls = [artistRControl, artistGControl, artistBControl, artistO1Control, artistO2Control];

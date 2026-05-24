@@ -1,0 +1,33 @@
+{
+  "name": "Now Playing Starter Themes",
+  "themes": [
+    {
+      "id": "clean",
+      "name": "Clean",
+      "description": "Artwork with decorative line and animated text",
+      "width": 1280,
+      "height": 200
+    },
+    {
+      "id": "asot-2k3",
+      "name": "ASOT 2K3",
+      "description": "Animated scrolling display",
+      "width": 900,
+      "height": 200
+    },
+    {
+      "id": "kinetik-3d",
+      "name": "Kinetik 3D",
+      "description": "3D chromatic aberration effect",
+      "width": 1100,
+      "height": 130
+    },
+    {
+      "id": "sideways",
+      "name": "Sideways",
+      "description": "Colored blocks animation",
+      "width": 1000,
+      "height": 180
+    }
+  ]
+}

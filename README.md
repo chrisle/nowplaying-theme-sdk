@@ -101,14 +101,62 @@ Use `isAnimating` to trigger your CSS/Framer Motion animations.
 - **`AlbumArt`** — Album artwork component with loading states, error fallback (music note icon), and size variants (`sm`, `md`, `lg`, `xl`)
 - **`BaseOverlay`** — Handles track change detection, animation lifecycle, and prop mapping
 
-## Submitting a Theme
+## Shipping Themes to Now Playing
 
-When your theme is ready to be added to the main Now Playing project:
+You ship themes by building a ZIP and uploading it from the Now Playing dashboard.
 
-1. Add `"use client";` as the first line of your theme file (required by Next.js)
-2. Update imports:
-   - `../types` → `@nowplaying/shared/types`
-   - `../components/base-overlay` → `./base-overlay`
-   - `../components/album-art` → `@/components/ui/album-art`
-3. Copy your theme file into `apps/web/src/components/overlays/`
-4. Register it in `apps/web/src/components/overlays/index.ts`
+### 1. Register the theme for bundling
+
+Add the theme to `src/bundle/themes.ts` so the bundle entry can render it:
+
+```ts
+import { MyTheme } from "../themes/my-theme";
+
+export const BUNDLED_THEMES: Record<string, ComponentType<BundledThemeProps>> = {
+  // ...existing entries
+  "my-theme": MyTheme as ComponentType<BundledThemeProps>,
+};
+```
+
+Then add it to `bundle.config.json`:
+
+```json
+{
+  "name": "My Themes",
+  "themes": [
+    {
+      "id": "my-theme",
+      "name": "My Theme",
+      "description": "A short tagline shown in the picker",
+      "width": 1280,
+      "height": 200
+    }
+  ]
+}
+```
+
+### 2. Build the bundle
+
+```bash
+npm run build:bundle
+```
+
+This produces `dist-bundle/<slug>.zip`. The ZIP contains:
+
+- `manifest.json` — the bundle descriptor used by the upload validator
+- `shared/entry.js` + `shared/style.css` — one shared bundle for all themes
+- `themes/<id>/index.html` — per-theme entry HTML the iframe loads
+
+### 3. Upload the ZIP
+
+Go to **Dashboard → Overlays → Configure**, scroll to **Custom Themes**, and pick
+the ZIP. Each theme inside the bundle becomes a separate option in the theme
+picker under "Custom".
+
+Custom themes require an active paid subscription.
+
+### Receiving track data
+
+Themes you build with `BaseOverlay` work out of the box: the bundle entry listens
+for `np:track` messages from the parent overlay page and passes the current
+`track` prop through to your component.

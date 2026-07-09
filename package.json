@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "build:bundle": "node scripts/build-bundle.mjs",
     "convert-np2": "node scripts/convert-np2.mjs",
+    "reset-themes": "node scripts/reset-themes.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

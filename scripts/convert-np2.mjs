@@ -377,15 +377,24 @@ function registerInBundleThemes(slug, pascal) {
   }
 
   // Insert the import after the last existing `import { ... } from "../themes/..."`.
+  // On a reset (empty) SDK there are no theme imports yet, so fall back to
+  // anchoring after the last import of any kind.
   const importRe = /import\s+\{[^}]+\}\s+from\s+"\.\.\/themes\/[^"]+";/g;
   const importMatches = [...src.matchAll(importRe)];
-  if (importMatches.length === 0) {
-    throw new Error(
-      `Could not find a theme import anchor in ${BUNDLE_THEMES_FILE}`,
-    );
+  let insertAt;
+  if (importMatches.length > 0) {
+    const lastImport = importMatches[importMatches.length - 1];
+    insertAt = lastImport.index + lastImport[0].length;
+  } else {
+    const anyImports = [...src.matchAll(/^import\s.+;$/gm)];
+    if (anyImports.length === 0) {
+      throw new Error(
+        `Could not find an import anchor in ${BUNDLE_THEMES_FILE}`,
+      );
+    }
+    const last = anyImports[anyImports.length - 1];
+    insertAt = last.index + last[0].length;
   }
-  const lastImport = importMatches[importMatches.length - 1];
-  const insertAt = lastImport.index + lastImport[0].length;
   src = src.slice(0, insertAt) + `\n${importLine}` + src.slice(insertAt);
 
   // Insert the registry entry as the last property of the BUNDLED_THEMES object.
@@ -443,13 +452,21 @@ function registerInApp(slug, pascal, meta) {
     return;
   }
 
-  // Insert the import after the last `import { ... } from "./themes/..."`.
+  // Insert the import after the last `import { ... } from "./themes/..."`, or
+  // after the last import of any kind on a reset (empty) SDK.
   const importRe = /import\s+\{[^}]+\}\s+from\s+"\.\/themes\/[^"]+";/g;
   const importMatches = [...src.matchAll(importRe)];
   if (importMatches.length > 0) {
     const lastImport = importMatches[importMatches.length - 1];
     const insertAt = lastImport.index + lastImport[0].length;
     src = src.slice(0, insertAt) + `\n${importLine}` + src.slice(insertAt);
+  } else {
+    const anyImports = [...src.matchAll(/^import\s.+;$/gm)];
+    if (anyImports.length > 0) {
+      const last = anyImports[anyImports.length - 1];
+      const insertAt = last.index + last[0].length;
+      src = src.slice(0, insertAt) + `\n${importLine}` + src.slice(insertAt);
+    }
   }
 
   // Insert into the THEMES registry array, before its closing `] as const;`.

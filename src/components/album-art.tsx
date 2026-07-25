@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface AlbumArtProps {
   src?: string | null;
@@ -59,12 +59,17 @@ export function AlbumArt({
 }: AlbumArtProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   // Reset load state when the artwork source changes — without this, one bad
   // URL leaves the placeholder up for every subsequent track, and a new track
-  // renders a transparent hole while its image is still loading.
+  // renders a transparent hole while its image is still loading. Cached images
+  // can fire `load` before this effect runs, so trust a complete img over the
+  // reset (the event won't fire again).
   useEffect(() => {
-    setImageLoaded(false);
+    const img = imgRef.current;
+    const alreadyLoaded = !!img && img.complete && img.naturalWidth > 0;
+    setImageLoaded(alreadyLoaded);
     setImageError(false);
   }, [src]);
 
@@ -76,6 +81,7 @@ export function AlbumArt({
     <div className={`relative ${sizes[size]} rounded overflow-hidden flex-shrink-0 ${className}`}>
       <img
         key={src}
+        ref={imgRef}
         src={src}
         alt={alt}
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${

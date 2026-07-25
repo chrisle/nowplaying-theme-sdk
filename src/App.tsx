@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { DownloadBundleButton } from "./components/download-bundle-button";
 import { EnrichedTrack } from "./types";
 import { MOCK_TRACKS } from "./mock-data";
 import { Clean } from "./themes/clean";
@@ -243,6 +244,8 @@ export default function App() {
               ))}
             </select>
           </div>
+
+          <DownloadBundleButton />
 
           <div className="ml-auto text-zinc-500 text-sm">
             {track.artist} &mdash; {track.title}

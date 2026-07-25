@@ -3,8 +3,9 @@
 A self-contained kit for building overlay themes for
 [Now Playing](https://nowplayingapp.com).
 
-Develop and preview your theme locally against mock track data, then run one
-command to produce a `.np3theme` file you upload from the Now Playing dashboard.
+Develop and preview your theme locally against mock track data, then click
+**Download .np3theme** (or run one command) to produce the file you upload from
+the Now Playing dashboard.
 
 ## Getting Started
 
@@ -20,11 +21,11 @@ exit/enter animation cycle.
 
 ## The workflow
 
-| Command             | What it does                                                   |
-| ------------------- | -------------------------------------------------------------- |
-| `npm run dev`       | Local preview with mock tracks and live-editable theme options |
-| `npm run build`     | Typechecks, then produces the uploadable `.np3theme` in `dist-bundle/` |
-| `npm run typecheck` | Typecheck only                                                 |
+| Command             | What it does                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------ |
+| `npm run dev`       | Local preview with mock tracks, live-editable theme options, and a **Download .np3theme** button |
+| `npm run build`     | Typechecks, then produces the uploadable `.np3theme` in `dist-bundle/`                           |
+| `npm run typecheck` | Typecheck only                                                                                   |
 
 `src/themes/clean.tsx` is a complete, shipping-quality theme — copy it as the
 starting point for your own.
@@ -167,6 +168,9 @@ Then add it to `bundle.config.json`:
 ```
 
 ### 2. Build the bundle
+
+Either click **Download .np3theme** in the playground footer (fastest — it runs
+the same build and saves the file straight to your downloads folder), or run:
 
 ```bash
 npm run build

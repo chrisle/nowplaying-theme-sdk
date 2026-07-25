@@ -17,9 +17,13 @@
  *
  * The output ZIP is what users upload via the Custom Themes panel on
  * https://app.nowplayingapp.com.
+ *
+ * `buildBundle()` is also exported so the dev server's "Download .np3theme"
+ * button can run the exact same build (see scripts/vite-plugin-download.mjs).
  */
 
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import {
   existsSync,
   mkdirSync,
@@ -29,9 +33,11 @@ import {
   cpSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import JSZip from "jszip";
 import { readFile, readdir, stat } from "node:fs/promises";
+
+const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -67,12 +73,14 @@ function readConfig() {
   return raw;
 }
 
-function runVite() {
+async function runVite() {
   log("Running vite build (bundle config)...");
   // We invoke the CLI rather than the programmatic API so the resolved
-  execFileSync("npx", ["vite", "build", "--config", VITE_CONFIG], {
-    stdio: "inherit",
+  // config matches exactly what `npx vite build` would produce. Async so the
+  // dev server stays responsive while the bundle builds.
+  await execFileAsync("npx", ["vite", "build", "--config", VITE_CONFIG], {
     cwd: ROOT,
+    maxBuffer: 16 * 1024 * 1024,
   });
 }
 
@@ -181,8 +189,8 @@ async function buildStaging(config) {
 }
 
 async function zipStaging(config) {
-  const slug = slugify(config.name ?? "themes");
-  const outPath = join(DIST_DIR, `${slug}.np3theme`);
+  const fileName = `${slugify(config.name ?? "themes")}.np3theme`;
+  const outPath = join(DIST_DIR, fileName);
   log(`Packaging bundle to ${outPath}...`);
 
   const zip = new JSZip();
@@ -208,23 +216,40 @@ async function zipStaging(config) {
     compressionOptions: { level: 6 },
   });
   writeFileSync(outPath, buf);
-  return outPath;
+  return { outPath, fileName };
 }
 
-async function main() {
+/**
+ * Build the `.np3theme` bundle and return where it landed.
+ *
+ * @returns {Promise<{ outPath: string, fileName: string, manifest: object }>}
+ */
+export async function buildBundle() {
   const config = readConfig();
-  runVite();
+  await runVite();
   const { manifest } = await buildStaging(config);
-  const outPath = await zipStaging(config);
+  const { outPath, fileName } = await zipStaging(config);
   log(
     `Done. ${manifest.themes.length} theme${manifest.themes.length === 1 ? "" : "s"} packaged.`,
   );
+  return { outPath, fileName, manifest };
+}
+
+async function main() {
+  const { outPath } = await buildBundle();
   log(
     `Upload ${outPath} on https://app.nowplayingapp.com/dashboard/overlays/configure.`,
   );
 }
 
-main().catch((err) => {
-  process.stderr.write(`[build] error: ${err.message ?? err}\n`);
-  process.exit(1);
-});
+// Only run the CLI when invoked directly (`node scripts/build-bundle.mjs`) —
+// importing this module (the dev-server download button) must not build.
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch((err) => {
+    process.stderr.write(`[build] error: ${err.message ?? err}\n`);
+    process.exit(1);
+  });
+}

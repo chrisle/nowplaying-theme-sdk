@@ -230,6 +230,7 @@ interface CyberpunkThemeProps {
   showCallout?: boolean;
   showEqualizer?: boolean;
   showHolo?: boolean;
+  showShadow?: boolean;
   panelColor?: string;
   paperColor?: string;
   screenColor?: string;
@@ -254,6 +255,7 @@ function CyberpunkTheme({
   showCallout = true,
   showEqualizer = true,
   showHolo = true,
+  showShadow = true,
   panelColor = "#0b0b0d",
   paperColor = "#f4f4f1",
   screenColor = "#d9eaf7",
@@ -394,7 +396,15 @@ function CyberpunkTheme({
   return (
     <div
       className="relative inline-block max-w-full"
-      style={{ fontFamily, paddingTop: showCallout ? 40 : 0 }}
+      style={{
+        fontFamily,
+        paddingTop: showCallout ? 40 : 0,
+        // drop-shadow (unlike box-shadow) traces the die-cut clip-path,
+        // lifting the whole label off whatever OBS is compositing behind it
+        filter: showShadow
+          ? "drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0 18px 44px rgba(0, 0, 0, 0.45))"
+          : undefined,
+      }}
     >
       {/* ── Connector trace: riser → 45° jog → run → node + tag ── */}
       {showCallout && (
@@ -809,6 +819,7 @@ interface CyberpunkProps {
   showCallout?: boolean;
   showEqualizer?: boolean;
   showHolo?: boolean;
+  showShadow?: boolean;
   panelColor?: string;
   paperColor?: string;
   screenColor?: string;
@@ -829,6 +840,7 @@ export function Cyberpunk({
   showCallout,
   showEqualizer,
   showHolo,
+  showShadow,
   panelColor,
   paperColor,
   screenColor,
@@ -848,6 +860,7 @@ export function Cyberpunk({
           showCallout={showCallout}
           showEqualizer={showEqualizer}
           showHolo={showHolo}
+          showShadow={showShadow}
           panelColor={panelColor}
           paperColor={paperColor}
           screenColor={screenColor}

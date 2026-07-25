@@ -38,10 +38,6 @@ const SLAB_CLIP = "polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%)";
 const CHIP_CLIP =
   "polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))";
 
-// Holographic foil gradient — the one non-monochrome accent
-const HOLO_GRADIENT =
-  "linear-gradient(115deg, #f6c6de 0%, #c9f2df 22%, #cfe0f7 45%, #e6d3f7 68%, #f6e3c6 85%, #f6c6de 100%)";
-
 type Phase = "rest" | "exit" | "enter";
 
 // Glyphs the typing edge cycles through before each real letter settles
@@ -267,7 +263,6 @@ interface CyberpunkThemeProps {
   showBackdrop?: boolean;
   showCallout?: boolean;
   showEqualizer?: boolean;
-  showHolo?: boolean;
   showShadow?: boolean;
   showGlow?: boolean;
   hackerText?: boolean;
@@ -297,7 +292,6 @@ function CyberpunkTheme({
   showBackdrop = true,
   showCallout = true,
   showEqualizer = true,
-  showHolo = false,
   showShadow = true,
   showGlow = true,
   hackerText = false,
@@ -454,11 +448,6 @@ function CyberpunkTheme({
     .filter(Boolean)
     .join(", ");
 
-  const holoStyle = {
-    backgroundImage: HOLO_GRADIENT,
-    backgroundSize: "300% 100%",
-  };
-
   return (
     <div
       className="relative inline-block max-w-full"
@@ -523,9 +512,7 @@ function CyberpunkTheme({
               height: 9,
               rotate: 45,
               boxShadow: showGlow ? glowOf(accentColor, 6) : undefined,
-              ...(showHolo
-                ? holoStyle
-                : { backgroundColor: accentColor }),
+              backgroundColor: accentColor,
             }}
             variants={{
               in: { scale: 1, opacity: 1, transition: { duration: 0.2, delay: 0.5 } },
@@ -594,24 +581,15 @@ function CyberpunkTheme({
             </div>
           )}
 
-          {/* Edge sliver: holo foil when enabled, accent fade otherwise */}
-          {showHolo ? (
-            <motion.div
-              className="pointer-events-none absolute bottom-[8px] left-0 z-10 w-[5px]"
-              style={{ top: 16, ...holoStyle }}
-              animate={{ backgroundPosition: ["0% 0%", "300% 0%"] }}
-              transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
-            />
-          ) : (
-            <div
-              className="pointer-events-none absolute bottom-[8px] left-0 z-10 w-[5px]"
-              style={{
-                top: 16,
-                background: `linear-gradient(180deg, ${accentColor}, ${alpha(accentColor, "1a")})`,
-                boxShadow: showGlow ? glowOf(accentColor, 7) : undefined,
-              }}
-            />
-          )}
+          {/* Accent sliver along the left edge */}
+          <div
+            className="pointer-events-none absolute bottom-[8px] left-0 z-10 w-[5px]"
+            style={{
+              top: 16,
+              background: `linear-gradient(180deg, ${accentColor}, ${alpha(accentColor, "1a")})`,
+              boxShadow: showGlow ? glowOf(accentColor, 7) : undefined,
+            }}
+          />
 
           {/* Decorative dot grid */}
           <div
@@ -882,21 +860,12 @@ function CyberpunkTheme({
               ))}
             </span>
             <span>NKD 37T4-T</span>
-            {showHolo ? (
-              <motion.span
-                className="h-[10px] w-[26px]"
-                style={holoStyle}
-                animate={{ backgroundPosition: ["0% 0%", "300% 0%"] }}
-                transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
-              />
-            ) : (
-              <span
-                className="h-[10px] w-[26px]"
-                style={{
-                  background: `repeating-linear-gradient(45deg, ${accentColor} 0px, ${accentColor} 4px, transparent 4px, transparent 8px)`,
-                }}
-              />
-            )}
+            <span
+              className="h-[10px] w-[26px]"
+              style={{
+                background: `repeating-linear-gradient(45deg, ${accentColor} 0px, ${accentColor} 4px, transparent 4px, transparent 8px)`,
+              }}
+            />
             <span className="ml-auto pr-6">01/09/2077</span>
           </motion.div>
         </div>
@@ -913,7 +882,6 @@ interface CyberpunkProps {
   showBackdrop?: boolean;
   showCallout?: boolean;
   showEqualizer?: boolean;
-  showHolo?: boolean;
   showShadow?: boolean;
   showGlow?: boolean;
   hackerText?: boolean;
@@ -939,7 +907,6 @@ export function Cyberpunk({
   showBackdrop,
   showCallout,
   showEqualizer,
-  showHolo,
   showShadow,
   showGlow,
   hackerText,
@@ -964,7 +931,6 @@ export function Cyberpunk({
           showBackdrop={showBackdrop}
           showCallout={showCallout}
           showEqualizer={showEqualizer}
-          showHolo={showHolo}
           showShadow={showShadow}
           showGlow={showGlow}
           hackerText={hackerText}

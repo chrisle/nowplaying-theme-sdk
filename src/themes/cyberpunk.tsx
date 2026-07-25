@@ -9,7 +9,7 @@ import { AlbumArt } from "../components/album-art";
 // panel wipes down, LCD window opens, text types in, metadata stamps on.
 // Exit is the mechanical reverse — backspace, close, fold up, retract.
 
-const EXIT_MS = 950;
+const EXIT_MS = 1450;
 const ENTER_MS = 3000;
 
 const MONO_FONT = "'Space Mono', ui-monospace, monospace";
@@ -315,7 +315,7 @@ function CyberpunkTheme({
         }),
         panelControls.start({
           clipPath: "inset(0 0 100% 0)",
-          transition: { duration: 0.4, delay: 0.45, ease: "easeIn" },
+          transition: { duration: 0.8, delay: 0.5, ease: "easeInOut" },
         }),
         traceControls.start("out"),
       ]);
@@ -326,7 +326,7 @@ function CyberpunkTheme({
         traceControls.start("in"),
         panelControls.start({
           clipPath: "inset(0 0 0% 0)",
-          transition: { duration: 0.5, delay: 0.2, ease: "easeOut" },
+          transition: { duration: 0.65, delay: 0.2, ease: "easeOut" },
         }),
         headerControls.start({
           opacity: 1,

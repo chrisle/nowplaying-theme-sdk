@@ -16,7 +16,7 @@ const MONO_FONT = "'Space Mono', ui-monospace, monospace";
 
 // HUD fonts load from Google Fonts at runtime so the theme works both in the
 // playground and inside a bundled overlay iframe.
-const FONT_LINK_ID = "np3-cyberpunk-fonts";
+const FONT_LINK_ID = "np3-defcon-fonts";
 const FONT_URL =
   "https://fonts.googleapis.com/css2?family=Michroma&family=Space+Mono:wght@400;700&display=swap";
 
@@ -258,7 +258,7 @@ const BARCODE_BARS = [2, 1, 3, 1, 1, 2, 4, 1, 2, 1, 1, 3, 2, 1, 2, 1, 3, 1];
 
 // ── Custom props interface (inner component) ────────────────────────
 
-interface CyberpunkThemeProps {
+interface DefconThemeProps {
   showArtwork?: boolean;
   showBackdrop?: boolean;
   showCallout?: boolean;
@@ -282,7 +282,7 @@ interface CyberpunkThemeProps {
 
 // ── Inner component: staged assembly + rendering ────────────────────
 
-function CyberpunkTheme({
+function DefconTheme({
   title,
   artist,
   label,
@@ -304,7 +304,7 @@ function CyberpunkTheme({
   textStrokeWidth = 2,
   fontFamily = "Michroma, 'Space Mono', system-ui, sans-serif",
   fontSize = { title: 26, artist: 15 },
-}: ThemeRenderProps & CyberpunkThemeProps) {
+}: ThemeRenderProps & DefconThemeProps) {
   const traceControls = useAnimation();
   const panelControls = useAnimation();
   const headerControls = useAnimation();
@@ -610,7 +610,7 @@ function CyberpunkTheme({
               fontFamily: MONO_FONT,
             }}
           >
-            CYBERPUNK.SYS
+            DEFCON.SYS
           </span>
 
           {/* ── Header bar: paper slab + slanted divider + metadata zone ── */}
@@ -876,7 +876,7 @@ function CyberpunkTheme({
 
 // ── Outer component props (public API) ──────────────────────────────
 
-interface CyberpunkProps {
+interface DefconProps {
   track: EnrichedTrack | null;
   showArtwork?: boolean;
   showBackdrop?: boolean;
@@ -901,7 +901,7 @@ interface CyberpunkProps {
 
 // ── Outer component: BaseOverlay wrapper ────────────────────────────
 
-export function Cyberpunk({
+export function Defcon({
   track,
   showArtwork,
   showBackdrop,
@@ -919,13 +919,13 @@ export function Cyberpunk({
   textStrokeWidth,
   fontFamily,
   fontSize,
-}: CyberpunkProps) {
+}: DefconProps) {
   return (
     <BaseOverlay
       track={track}
       animationTiming={{ exitDuration: EXIT_MS, enterDuration: ENTER_MS }}
       renderTheme={(props) => (
-        <CyberpunkTheme
+        <DefconTheme
           {...props}
           showArtwork={showArtwork}
           showBackdrop={showBackdrop}

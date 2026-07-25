@@ -339,11 +339,15 @@ function useTvGlitch(enabled: boolean): TvBurst | null {
 function CountUp({
   value,
   phase,
+  delay = 0,
   className,
   style,
 }: {
   value: number;
   phase: Phase;
+  /** Wait this long (ms) before counting a fresh value during the enter
+   * choreography — so the spin happens after its block has faded in */
+  delay?: number;
   className?: string;
   style?: React.CSSProperties;
 }) {
@@ -364,18 +368,30 @@ function CountUp({
       setShown(value);
       return;
     }
-    // Fast ease-out spin: big jumps early, settling onto the target
+    // Hold at 000 until the count begins so the fade-in never reveals a
+    // half-counted (or stale) number
+    if (fromScratch) setShown(0);
     const TICKS = 16;
     let k = 0;
-    const id = setInterval(() => {
-      k++;
-      const t = k / TICKS;
-      const eased = 1 - (1 - t) * (1 - t);
-      setShown(Math.round(from + (value - from) * eased));
-      if (k >= TICKS) clearInterval(id);
-    }, 40);
-    return () => clearInterval(id);
-  }, [value, phase]);
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const timeout = setTimeout(
+      () => {
+        // Fast ease-out spin: big jumps early, settling onto the target
+        interval = setInterval(() => {
+          k++;
+          const t = k / TICKS;
+          const eased = 1 - (1 - t) * (1 - t);
+          setShown(Math.round(from + (value - from) * eased));
+          if (k >= TICKS && interval) clearInterval(interval);
+        }, 40);
+      },
+      phase === "enter" && fromScratch ? delay : 0,
+    );
+    return () => {
+      clearTimeout(timeout);
+      if (interval) clearInterval(interval);
+    };
+  }, [value, phase, delay]);
 
   return (
     <span className={className} style={style}>
@@ -407,6 +423,7 @@ interface DefconThemeProps {
   showEqualizer?: boolean;
   showShadow?: boolean;
   showGlow?: boolean;
+  showGlitch?: boolean;
   hackerText?: boolean;
   headerText?: string;
   panelColor?: string;
@@ -436,8 +453,9 @@ function DefconTheme({
   showEqualizer = true,
   showShadow = true,
   showGlow = true,
+  showGlitch = true,
   hackerText = true,
-  headerText = "Now_Playing",
+  headerText = "DEF CON 34",
   panelColor = "#0c111e",
   paperColor = "#f4f4f1",
   accentColor = "#f2e422",
@@ -465,7 +483,7 @@ function DefconTheme({
   const displayLabel = label && hackerText ? toLeet(label) : label;
 
   // Random TV-interference bursts over the artwork
-  const glitchBurst = useTvGlitch(showArtwork && !!artwork);
+  const glitchBurst = useTvGlitch(showGlitch && showArtwork && !!artwork);
 
   // Load the HUD fonts once, shared by every instance of this theme
   useEffect(() => {
@@ -999,6 +1017,7 @@ function DefconTheme({
               <CountUp
                 value={indexNo}
                 phase={phase}
+                delay={1400}
                 className="leading-none"
                 style={{
                   fontSize: 26,
@@ -1083,6 +1102,7 @@ interface DefconProps {
   showEqualizer?: boolean;
   showShadow?: boolean;
   showGlow?: boolean;
+  showGlitch?: boolean;
   hackerText?: boolean;
   headerText?: string;
   panelColor?: string;
@@ -1108,6 +1128,7 @@ export function Defcon({
   showEqualizer,
   showShadow,
   showGlow,
+  showGlitch,
   hackerText,
   headerText,
   panelColor,
@@ -1132,6 +1153,7 @@ export function Defcon({
           showEqualizer={showEqualizer}
           showShadow={showShadow}
           showGlow={showGlow}
+          showGlitch={showGlitch}
           hackerText={hackerText}
           headerText={headerText}
           panelColor={panelColor}

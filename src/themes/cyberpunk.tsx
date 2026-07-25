@@ -233,6 +233,7 @@ interface CyberpunkThemeProps {
   panelColor?: string;
   paperColor?: string;
   screenColor?: string;
+  textStrokeWidth?: number;
   fontFamily?: string;
   fontSize?: {
     title?: number;
@@ -256,6 +257,7 @@ function CyberpunkTheme({
   panelColor = "#0b0b0d",
   paperColor = "#f4f4f1",
   screenColor = "#d9eaf7",
+  textStrokeWidth = 2,
   fontFamily = "Michroma, 'Space Mono', system-ui, sans-serif",
   fontSize = { title: 26, artist: 15 },
 }: ThemeRenderProps & CyberpunkThemeProps) {
@@ -365,6 +367,24 @@ function CyberpunkTheme({
 
   const status =
     phase === "exit" ? "EJECT" : phase === "enter" ? "WRITE" : "SYNC:OK";
+
+  // Panel-colored outline so the display text holds against the art backdrop
+  // (text-shadow in 8 directions, same cross-browser trick as the Clean theme)
+  const textStroke =
+    textStrokeWidth > 0
+      ? {
+          textShadow: [
+            `-${textStrokeWidth}px -${textStrokeWidth}px 0 ${panelColor}`,
+            `${textStrokeWidth}px -${textStrokeWidth}px 0 ${panelColor}`,
+            `-${textStrokeWidth}px ${textStrokeWidth}px 0 ${panelColor}`,
+            `${textStrokeWidth}px ${textStrokeWidth}px 0 ${panelColor}`,
+            `0 -${textStrokeWidth}px 0 ${panelColor}`,
+            `0 ${textStrokeWidth}px 0 ${panelColor}`,
+            `-${textStrokeWidth}px 0 0 ${panelColor}`,
+            `${textStrokeWidth}px 0 0 ${panelColor}`,
+          ].join(", "),
+        }
+      : {};
 
   const holoStyle = {
     backgroundImage: HOLO_GRADIENT,
@@ -635,6 +655,7 @@ function CyberpunkTheme({
                 style={{
                   fontSize: `${fontSize.title ?? 26}px`,
                   letterSpacing: "0.04em",
+                  ...textStroke,
                 }}
               >
                 <TypeReveal
@@ -659,6 +680,7 @@ function CyberpunkTheme({
                     fontSize: `${fontSize.artist ?? 15}px`,
                     letterSpacing: "0.2em",
                     fontFamily: MONO_FONT,
+                    ...textStroke,
                   }}
                 >
                   <TypeReveal
@@ -790,6 +812,7 @@ interface CyberpunkProps {
   panelColor?: string;
   paperColor?: string;
   screenColor?: string;
+  textStrokeWidth?: number;
   fontFamily?: string;
   fontSize?: {
     title?: number;
@@ -809,6 +832,7 @@ export function Cyberpunk({
   panelColor,
   paperColor,
   screenColor,
+  textStrokeWidth,
   fontFamily,
   fontSize,
 }: CyberpunkProps) {
@@ -827,6 +851,7 @@ export function Cyberpunk({
           panelColor={panelColor}
           paperColor={paperColor}
           screenColor={screenColor}
+          textStrokeWidth={textStrokeWidth}
           fontFamily={fontFamily}
           fontSize={fontSize}
         />

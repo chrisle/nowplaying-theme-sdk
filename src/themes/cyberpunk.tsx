@@ -226,6 +226,7 @@ const BARCODE_BARS = [2, 1, 3, 1, 1, 2, 4, 1, 2, 1, 1, 3, 2, 1, 2, 1, 3, 1];
 
 interface CyberpunkThemeProps {
   showArtwork?: boolean;
+  showBackdrop?: boolean;
   showCallout?: boolean;
   showEqualizer?: boolean;
   showHolo?: boolean;
@@ -248,6 +249,7 @@ function CyberpunkTheme({
   artwork,
   isAnimating,
   showArtwork = true,
+  showBackdrop = true,
   showCallout = true,
   showEqualizer = true,
   showHolo = true,
@@ -494,6 +496,30 @@ function CyberpunkTheme({
             clipPath: PANEL_CLIP,
           }}
         >
+          {/* Blurred album-art glow behind the label content */}
+          {showBackdrop && artwork && (
+            <div className="pointer-events-none absolute inset-0 z-0">
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `url("${artwork}")`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  filter: "blur(42px) saturate(1.3)",
+                  transform: "scale(1.45)",
+                  opacity: 0.32,
+                }}
+              />
+              {/* Contrast wash: darkest behind the art window, lightest behind the title */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(90deg, ${alpha(panelColor, "e6")} 0%, ${alpha(panelColor, "73")} 45%, ${alpha(panelColor, "cc")} 100%)`,
+                }}
+              />
+            </div>
+          )}
+
           {/* Holo foil sliver along the left edge */}
           {showHolo && (
             <motion.div
@@ -757,6 +783,7 @@ function CyberpunkTheme({
 interface CyberpunkProps {
   track: EnrichedTrack | null;
   showArtwork?: boolean;
+  showBackdrop?: boolean;
   showCallout?: boolean;
   showEqualizer?: boolean;
   showHolo?: boolean;
@@ -775,6 +802,7 @@ interface CyberpunkProps {
 export function Cyberpunk({
   track,
   showArtwork,
+  showBackdrop,
   showCallout,
   showEqualizer,
   showHolo,
@@ -792,6 +820,7 @@ export function Cyberpunk({
         <CyberpunkTheme
           {...props}
           showArtwork={showArtwork}
+          showBackdrop={showBackdrop}
           showCallout={showCallout}
           showEqualizer={showEqualizer}
           showHolo={showHolo}

@@ -429,67 +429,39 @@ function CyberpunkTheme({
       {/* ── Connector trace: riser → 45° jog → run → node + tag ── */}
       {showCallout && (
         <div className="pointer-events-none absolute right-0 top-0 z-30 h-[40px] w-[240px]">
-          {/* Riser from the panel's stepped top edge */}
-          <motion.span
-            className="absolute origin-bottom"
-            style={{
-              right: 112,
-              top: 25,
-              width: 2,
-              height: 28,
-              backgroundColor: alpha(paperColor, "b3"),
-            }}
-            variants={{
-              in: { scaleY: 1, opacity: 1, transition: { duration: 0.2 } },
-              out: { scaleY: 0, opacity: 0, transition: { duration: 0.25 } },
-            }}
-            initial="in"
-            animate={traceControls}
-          />
-          {/* 45° diagonal jog */}
-          <motion.span
-            className="absolute"
-            style={{
-              right: 98,
-              top: 10,
-              width: 22,
-              height: 2,
-              backgroundColor: alpha(paperColor, "b3"),
-              transformOrigin: "100% 50%",
-              rotate: 45,
-            }}
-            variants={{
-              in: {
-                scaleX: 1,
-                opacity: 1,
-                transition: { duration: 0.18, delay: 0.2 },
-              },
-              out: { scaleX: 0, opacity: 0, transition: { duration: 0.2 } },
-            }}
-            initial="in"
-            animate={traceControls}
-          />
-          {/* Horizontal run */}
-          <motion.span
-            className="absolute origin-left"
-            style={{
-              right: 20,
-              top: 9,
-              width: 78,
-              height: 2,
-              backgroundColor: alpha(paperColor, "b3"),
-            }}
-            variants={{
-              in: {
-                scaleX: 1,
-                opacity: 1,
-                transition: { duration: 0.25, delay: 0.38 },
-              },
-              out: { scaleX: 0, opacity: 0, transition: { duration: 0.2 } },
-            }}
-            initial="in"
-            animate={traceControls}
-          />
+          {/* Continuous trace: panel edge → riser → 45° jog → run to the node.
+              One SVG stroke so the joints can never drift apart; pathLength
+              draws it in from the panel outward. */}
+          <svg
+            className="absolute right-0 top-0"
+            width={240}
+            height={56}
+            viewBox="0 0 240 56"
+            fill="none"
+            style={{ overflow: "visible" }}
+          >
+            <motion.path
+              d="M 127 52 L 127 26 L 143 10 L 222 10"
+              stroke={alpha(paperColor, "b3")}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              variants={{
+                in: {
+                  pathLength: 1,
+                  opacity: 1,
+                  transition: { duration: 0.55, ease: "easeOut" },
+                },
+                out: {
+                  pathLength: 0,
+                  opacity: 0,
+                  transition: { duration: 0.3, ease: "easeIn" },
+                },
+              }}
+              initial="in"
+              animate={traceControls}
+            />
+          </svg>
           {/* Diamond node */}
           <motion.span
             className="absolute"
@@ -504,7 +476,7 @@ function CyberpunkTheme({
                 : { backgroundColor: paperColor }),
             }}
             variants={{
-              in: { scale: 1, opacity: 1, transition: { duration: 0.2, delay: 0.63 } },
+              in: { scale: 1, opacity: 1, transition: { duration: 0.2, delay: 0.5 } },
               out: { scale: 0, opacity: 0, transition: { duration: 0.15 } },
             }}
             initial="in"
@@ -521,7 +493,7 @@ function CyberpunkTheme({
               letterSpacing: "0.14em",
             }}
             variants={{
-              in: { opacity: 1, transition: { duration: 0.25, delay: 0.75 } },
+              in: { opacity: 1, transition: { duration: 0.25, delay: 0.62 } },
               out: { opacity: 0, transition: { duration: 0.15 } },
             }}
             initial="in"
@@ -609,12 +581,12 @@ function CyberpunkTheme({
             initial={{ opacity: 1, x: 0 }}
           >
             <div
-              className="flex w-[60%] items-center gap-2 pl-6"
+              className="flex w-[60%] items-center gap-2 pl-6 pr-8"
               style={{ backgroundColor: paperColor, clipPath: SLAB_CLIP }}
             >
               {/* Play glyph */}
               <span
-                className="inline-block h-0 w-0"
+                className="inline-block h-0 w-0 flex-shrink-0"
                 style={{
                   borderTop: "5px solid transparent",
                   borderBottom: "5px solid transparent",
@@ -627,11 +599,33 @@ function CyberpunkTheme({
               >
                 {headerText}
               </span>
+              {/* Status tick */}
+              <motion.span
+                className="ml-1 inline-block h-[5px] w-[5px] flex-shrink-0"
+                style={{ backgroundColor: panelColor }}
+                animate={{ opacity: [1, 1, 0.15, 1] }}
+                transition={{ duration: 2.2, repeat: Infinity, times: [0, 0.82, 0.9, 1] }}
+              />
+              {/* Diagonal hatch block against the slanted edge */}
+              <span
+                className="ml-auto h-[12px] w-[34px] flex-shrink-0"
+                style={{
+                  background: `repeating-linear-gradient(135deg, ${panelColor} 0px, ${panelColor} 4px, transparent 4px, transparent 8px)`,
+                }}
+              />
             </div>
             <div
               className="flex flex-1 items-center justify-end gap-3 pr-12 pt-[12px] text-[9px] uppercase"
               style={{ color: alpha(paperColor, "99"), fontFamily: MONO_FONT }}
             >
+              {/* Checkerboard strip */}
+              <span
+                className="h-[10px] w-[30px] flex-shrink-0"
+                style={{
+                  backgroundImage: `repeating-conic-gradient(${alpha(paperColor, "59")} 0% 25%, transparent 0% 50%)`,
+                  backgroundSize: "5px 5px",
+                }}
+              />
               <span>{status}</span>
               <span style={{ color: alpha(paperColor, "4d") }}>⏐</span>
               <span>ID:NP3-{hex}</span>

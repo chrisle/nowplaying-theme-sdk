@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface AlbumArtProps {
   src?: string | null;
@@ -14,7 +14,13 @@ const sizes = {
   xl: "w-[170px] h-[170px]",
 };
 
-function ArtworkPlaceholder({ size }: { size: "sm" | "md" | "lg" | "xl" }) {
+function ArtworkPlaceholder({
+  size,
+  className = "",
+}: {
+  size: "sm" | "md" | "lg" | "xl";
+  className?: string;
+}) {
   const iconSizes = {
     sm: "w-5 h-5",
     md: "w-8 h-8",
@@ -23,7 +29,7 @@ function ArtworkPlaceholder({ size }: { size: "sm" | "md" | "lg" | "xl" }) {
   };
 
   return (
-    <div className={`${sizes[size]} rounded bg-black flex items-center justify-center flex-shrink-0`}>
+    <div className={`${sizes[size]} rounded bg-black flex items-center justify-center flex-shrink-0 ${className}`}>
       <svg
         className={`${iconSizes[size]} text-white/80`}
         fill="none"
@@ -54,8 +60,16 @@ export function AlbumArt({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  // Reset load state when the artwork source changes — without this, one bad
+  // URL leaves the placeholder up for every subsequent track, and a new track
+  // renders a transparent hole while its image is still loading.
+  useEffect(() => {
+    setImageLoaded(false);
+    setImageError(false);
+  }, [src]);
+
   if (!src || imageError) {
-    return <ArtworkPlaceholder size={size} />;
+    return <ArtworkPlaceholder size={size} className={className} />;
   }
 
   return (
@@ -75,7 +89,7 @@ export function AlbumArt({
           imageLoaded ? "opacity-0" : "opacity-100"
         }`}
       >
-        <ArtworkPlaceholder size={size} />
+        <ArtworkPlaceholder size={size} className={className} />
       </div>
     </div>
   );

@@ -247,6 +247,8 @@ interface CyberpunkThemeProps {
   headerText?: string;
   panelColor?: string;
   paperColor?: string;
+  accentColor?: string;
+  signalColor?: string;
   screenColor?: string;
   textStrokeWidth?: number;
   fontFamily?: string;
@@ -268,13 +270,15 @@ function CyberpunkTheme({
   showBackdrop = true,
   showCallout = true,
   showEqualizer = true,
-  showHolo = true,
+  showHolo = false,
   showShadow = true,
   hackerText = false,
   headerText = "Now_Playing",
-  panelColor = "#0b0b0d",
+  panelColor = "#0c111e",
   paperColor = "#f4f4f1",
-  screenColor = "#d9eaf7",
+  accentColor = "#f2e422",
+  signalColor = "#45d8e6",
+  screenColor = "#c9ecf4",
   textStrokeWidth = 2,
   fontFamily = "Michroma, 'Space Mono', system-ui, sans-serif",
   fontSize = { title: 26, artist: 15 },
@@ -388,7 +392,11 @@ function CyberpunkTheme({
   ]);
 
   const status =
-    phase === "exit" ? "EJECT" : phase === "enter" ? "WRITE" : "SYNC:OK";
+    phase === "exit"
+      ? { text: "EJECT", color: "#ff5148" }
+      : phase === "enter"
+        ? { text: "WRITE", color: accentColor }
+        : { text: "SYNC:OK", color: alpha(signalColor, "cc") };
 
   // Panel-colored outline so the display text holds against the art backdrop
   // (text-shadow in 8 directions, same cross-browser trick as the Clean theme)
@@ -442,7 +450,7 @@ function CyberpunkTheme({
           >
             <motion.path
               d="M 127 52 L 127 26 L 143 10 L 222 10"
-              stroke={alpha(paperColor, "b3")}
+              stroke={alpha(signalColor, "cc")}
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -473,7 +481,7 @@ function CyberpunkTheme({
               rotate: 45,
               ...(showHolo
                 ? holoStyle
-                : { backgroundColor: paperColor }),
+                : { backgroundColor: accentColor }),
             }}
             variants={{
               in: { scale: 1, opacity: 1, transition: { duration: 0.2, delay: 0.5 } },
@@ -542,13 +550,21 @@ function CyberpunkTheme({
             </div>
           )}
 
-          {/* Holo foil sliver along the left edge */}
-          {showHolo && (
+          {/* Edge sliver: holo foil when enabled, accent fade otherwise */}
+          {showHolo ? (
             <motion.div
               className="pointer-events-none absolute bottom-[8px] left-0 z-10 w-[5px]"
               style={{ top: 16, ...holoStyle }}
               animate={{ backgroundPosition: ["0% 0%", "300% 0%"] }}
               transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
+            />
+          ) : (
+            <div
+              className="pointer-events-none absolute bottom-[8px] left-0 z-10 w-[5px]"
+              style={{
+                top: 16,
+                background: `linear-gradient(180deg, ${accentColor}, ${alpha(accentColor, "1a")})`,
+              }}
             />
           )}
 
@@ -582,7 +598,7 @@ function CyberpunkTheme({
           >
             <div
               className="flex w-[60%] items-center gap-2 pl-6 pr-8"
-              style={{ backgroundColor: paperColor, clipPath: SLAB_CLIP }}
+              style={{ backgroundColor: accentColor, clipPath: SLAB_CLIP }}
             >
               {/* Play glyph */}
               <span
@@ -626,7 +642,7 @@ function CyberpunkTheme({
                   backgroundSize: "5px 5px",
                 }}
               />
-              <span>{status}</span>
+              <span style={{ color: status.color }}>{status.text}</span>
               <span style={{ color: alpha(paperColor, "4d") }}>⏐</span>
               <span>ID:NP3-{hex}</span>
             </div>
@@ -696,7 +712,7 @@ function CyberpunkTheme({
               <div className="flex min-w-0 items-center gap-2">
                 <span
                   className="h-[2px] w-5 flex-shrink-0"
-                  style={{ backgroundColor: alpha(paperColor, "80") }}
+                  style={{ backgroundColor: accentColor }}
                 />
                 <span
                   className="truncate font-bold uppercase"
@@ -704,6 +720,7 @@ function CyberpunkTheme({
                     fontSize: `${fontSize.artist ?? 15}px`,
                     letterSpacing: "0.2em",
                     fontFamily: MONO_FONT,
+                    color: signalColor,
                     ...textStroke,
                   }}
                 >
@@ -718,7 +735,7 @@ function CyberpunkTheme({
                   <span
                     className="hidden flex-shrink-0 px-[6px] py-[2px] text-[9px] font-bold uppercase sm:inline"
                     style={{
-                      backgroundColor: paperColor,
+                      backgroundColor: accentColor,
                       color: panelColor,
                       clipPath: CHIP_CLIP,
                       fontFamily: MONO_FONT,
@@ -760,7 +777,7 @@ function CyberpunkTheme({
                 value={indexNo}
                 phase={phase}
                 className="leading-none"
-                style={{ fontSize: 30 }}
+                style={{ fontSize: 30, color: accentColor }}
               />
               <span
                 className="text-[10px]"
@@ -788,7 +805,11 @@ function CyberpunkTheme({
                   <motion.span
                     key={i}
                     className="w-[2px] origin-bottom"
-                    style={{ height: "100%", backgroundColor: alpha(paperColor, "cc") }}
+                    style={{
+                      height: "100%",
+                      backgroundColor:
+                        i % 4 === 2 ? accentColor : alpha(signalColor, "cc"),
+                    }}
                     animate={{ scaleY: bar.seq }}
                     transition={{
                       duration: bar.duration,
@@ -808,12 +829,19 @@ function CyberpunkTheme({
               ))}
             </span>
             <span>NKD 37T4-T</span>
-            {showHolo && (
+            {showHolo ? (
               <motion.span
                 className="h-[10px] w-[26px]"
                 style={holoStyle}
                 animate={{ backgroundPosition: ["0% 0%", "300% 0%"] }}
                 transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
+              />
+            ) : (
+              <span
+                className="h-[10px] w-[26px]"
+                style={{
+                  background: `repeating-linear-gradient(45deg, ${accentColor} 0px, ${accentColor} 4px, transparent 4px, transparent 8px)`,
+                }}
               />
             )}
             <span className="ml-auto pr-6">01/09/2077</span>
@@ -838,6 +866,8 @@ interface CyberpunkProps {
   headerText?: string;
   panelColor?: string;
   paperColor?: string;
+  accentColor?: string;
+  signalColor?: string;
   screenColor?: string;
   textStrokeWidth?: number;
   fontFamily?: string;
@@ -861,6 +891,8 @@ export function Cyberpunk({
   headerText,
   panelColor,
   paperColor,
+  accentColor,
+  signalColor,
   screenColor,
   textStrokeWidth,
   fontFamily,
@@ -883,6 +915,8 @@ export function Cyberpunk({
           headerText={headerText}
           panelColor={panelColor}
           paperColor={paperColor}
+          accentColor={accentColor}
+          signalColor={signalColor}
           screenColor={screenColor}
           textStrokeWidth={textStrokeWidth}
           fontFamily={fontFamily}

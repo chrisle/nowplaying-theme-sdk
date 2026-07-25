@@ -194,6 +194,58 @@ function TypeReveal({
   );
 }
 
+/** Tumbling wireframe cube, each face subdivided into a 4×4 grid */
+function WireCube({
+  size,
+  color,
+  glow,
+}: {
+  size: number;
+  color: string;
+  glow: boolean;
+}) {
+  const half = size / 2;
+  const cell = size / 4;
+  const gridLine = alpha(color, "40");
+  const faceStyle = (transform: string): React.CSSProperties => ({
+    position: "absolute",
+    width: size,
+    height: size,
+    border: `1px solid ${alpha(color, "bb")}`,
+    backgroundImage: `repeating-linear-gradient(0deg, ${gridLine} 0px, ${gridLine} 1px, transparent 1px, transparent ${cell}px), repeating-linear-gradient(90deg, ${gridLine} 0px, ${gridLine} 1px, transparent 1px, transparent ${cell}px)`,
+    backgroundColor: alpha(color, "0a"),
+    transform,
+  });
+  return (
+    <div
+      style={{
+        perspective: 200,
+        width: size,
+        height: size,
+        filter: glow ? `drop-shadow(0 0 4px ${alpha(color, "66")})` : undefined,
+      }}
+    >
+      <motion.div
+        style={{
+          position: "relative",
+          width: size,
+          height: size,
+          transformStyle: "preserve-3d",
+        }}
+        animate={{ rotateX: 360, rotateY: 720 }}
+        transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
+      >
+        <div style={faceStyle(`rotateY(0deg) translateZ(${half}px)`)} />
+        <div style={faceStyle(`rotateY(90deg) translateZ(${half}px)`)} />
+        <div style={faceStyle(`rotateY(180deg) translateZ(${half}px)`)} />
+        <div style={faceStyle(`rotateY(270deg) translateZ(${half}px)`)} />
+        <div style={faceStyle(`rotateX(90deg) translateZ(${half}px)`)} />
+        <div style={faceStyle(`rotateX(-90deg) translateZ(${half}px)`)} />
+      </motion.div>
+    </div>
+  );
+}
+
 interface GlitchSlice {
   top: number;
   height: number;
@@ -900,6 +952,9 @@ function DefconTheme({
               >
                 ✳ ⊘ ⊠
               </span>
+              <div className="mb-1 mr-2 mt-3">
+                <WireCube size={32} color={signalColor} glow={showGlow} />
+              </div>
             </motion.div>
           </div>
 

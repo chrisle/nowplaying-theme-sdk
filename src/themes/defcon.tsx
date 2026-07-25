@@ -354,7 +354,7 @@ function DefconTheme({
   screenColor = "#c9ecf4",
   textStrokeWidth = 2,
   fontFamily = "Michroma, 'Space Mono', system-ui, sans-serif",
-  fontSize = { title: 26, artist: 15 },
+  fontSize = { title: 32, artist: 19 },
 }: ThemeRenderProps & DefconThemeProps) {
   const traceControls = useAnimation();
   const panelControls = useAnimation();
@@ -507,7 +507,7 @@ function DefconTheme({
       className="relative inline-block max-w-full"
       style={{
         fontFamily,
-        paddingTop: showCallout ? 40 : 0,
+        paddingTop: showCallout ? 48 : 0,
         // drop-shadow (unlike box-shadow) traces the die-cut clip-path,
         // lifting the whole label off whatever OBS is compositing behind it
         filter: showShadow
@@ -517,15 +517,15 @@ function DefconTheme({
     >
       {/* ── Connector trace: riser → 45° jog → run → node + tag ── */}
       {showCallout && (
-        <div className="pointer-events-none absolute right-0 top-0 z-30 h-[40px] w-[240px]">
+        <div className="pointer-events-none absolute right-0 top-0 z-30 h-[48px] w-[240px]">
           {/* Continuous trace: panel edge → riser → 45° jog → run to the node.
               One SVG stroke so the joints can never drift apart; pathLength
               draws it in from the panel outward. */}
           <svg
             className="absolute right-0 top-0"
             width={240}
-            height={56}
-            viewBox="0 0 240 56"
+            height={64}
+            viewBox="0 0 240 64"
             fill="none"
             style={{
               overflow: "visible",
@@ -535,7 +535,7 @@ function DefconTheme({
             }}
           >
             <motion.path
-              d="M 127 52 L 127 26 L 143 10 L 222 10"
+              d="M 127 60 L 127 34 L 143 18 L 222 18"
               stroke={alpha(signalColor, "cc")}
               strokeWidth={2}
               strokeLinecap="round"
@@ -561,7 +561,7 @@ function DefconTheme({
             className="absolute"
             style={{
               right: 8,
-              top: 5,
+              top: 13,
               width: 9,
               height: 9,
               rotate: 45,
@@ -577,7 +577,7 @@ function DefconTheme({
           />
           {/* Version tag */}
           <motion.span
-            className="absolute whitespace-nowrap text-[9px]"
+            className="absolute whitespace-nowrap text-[11px]"
             style={{
               right: 26,
               top: 0,
@@ -656,7 +656,7 @@ function DefconTheme({
 
           {/* Vertical spec text along the right edge */}
           <span
-            className="pointer-events-none absolute right-[6px] top-[54px] z-10 select-none text-[8px] uppercase"
+            className="pointer-events-none absolute right-[6px] top-[54px] z-10 select-none text-[10px] uppercase"
             style={{
               color: alpha(paperColor, "59"),
               writingMode: "vertical-rl",
@@ -687,7 +687,7 @@ function DefconTheme({
                 }}
               />
               <span
-                className="truncate text-[11px] font-bold uppercase"
+                className="truncate text-[14px] font-bold uppercase"
                 style={{ color: panelColor, letterSpacing: "0.32em" }}
               >
                 {headerText}
@@ -708,7 +708,7 @@ function DefconTheme({
               />
             </div>
             <div
-              className="flex flex-1 items-center justify-end gap-3 pr-12 pt-[12px] text-[9px] uppercase"
+              className="flex flex-1 items-center justify-end gap-3 pr-12 pt-[10px] text-[11px] uppercase"
               style={{ color: alpha(paperColor, "99"), fontFamily: MONO_FONT }}
             >
               {/* Checkerboard strip */}
@@ -772,7 +772,7 @@ function DefconTheme({
                     )}
                   </div>
                   <div
-                    className="flex items-center justify-between pt-[3px] text-[8px] uppercase"
+                    className="flex items-center justify-between pt-[3px] text-[10px] uppercase"
                     style={{ color: "#33506b", fontFamily: MONO_FONT }}
                   >
                     <span>IMG.SRC</span>
@@ -799,7 +799,7 @@ function DefconTheme({
               <div
                 className="truncate uppercase leading-tight"
                 style={{
-                  fontSize: `${fontSize.title ?? 26}px`,
+                  fontSize: `${fontSize.title ?? 32}px`,
                   letterSpacing: "0.04em",
                   ...textStroke,
                 }}
@@ -825,7 +825,7 @@ function DefconTheme({
                 <span
                   className="truncate font-bold uppercase"
                   style={{
-                    fontSize: `${fontSize.artist ?? 15}px`,
+                    fontSize: `${fontSize.artist ?? 19}px`,
                     letterSpacing: "0.2em",
                     fontFamily: MONO_FONT,
                     color: signalColor,
@@ -843,7 +843,7 @@ function DefconTheme({
                 </span>
                 {label && (
                   <span
-                    className="hidden flex-shrink-0 px-[6px] py-[2px] text-[9px] font-bold uppercase sm:inline"
+                    className="hidden flex-shrink-0 px-[6px] py-[2px] text-[11px] font-bold uppercase sm:inline"
                     style={{
                       backgroundColor: accentColor,
                       color: panelColor,
@@ -857,7 +857,7 @@ function DefconTheme({
                 )}
               </div>
               <div
-                className="flex items-center gap-3 text-[9px] uppercase"
+                className="flex items-center gap-3 text-[11px] uppercase"
                 style={{ color: alpha(paperColor, "66"), fontFamily: MONO_FONT }}
               >
                 <span>RSD-2077.270-Y</span>
@@ -869,12 +869,12 @@ function DefconTheme({
 
             {/* Index numeral block */}
             <motion.div
-              className="ml-6 hidden w-[86px] flex-shrink-0 flex-col items-end gap-1 self-center pr-6 md:flex"
+              className="ml-6 hidden w-[100px] flex-shrink-0 flex-col items-end gap-1 self-center pr-6 md:flex"
               animate={footerControls}
               initial={{ opacity: 1, y: 0 }}
             >
               <span
-                className="text-[8px] uppercase"
+                className="text-[10px] uppercase"
                 style={{
                   color: alpha(paperColor, "66"),
                   fontFamily: MONO_FONT,
@@ -888,13 +888,13 @@ function DefconTheme({
                 phase={phase}
                 className="leading-none"
                 style={{
-                  fontSize: 30,
+                  fontSize: 38,
                   color: accentColor,
                   textShadow: showGlow ? glowOf(accentColor, 9) : undefined,
                 }}
               />
               <span
-                className="text-[10px]"
+                className="text-[12px]"
                 style={{ color: alpha(paperColor, "59") }}
               >
                 ✳ ⊘ ⊠
@@ -904,7 +904,7 @@ function DefconTheme({
 
           {/* ── Footer strip: rule, meter, barcode, spec text ── */}
           <motion.div
-            className="relative z-10 mx-6 mb-[14px] flex items-center gap-4 border-t pt-[7px] text-[9px] uppercase"
+            className="relative z-10 mx-6 mb-[14px] flex items-center gap-4 border-t pt-[7px] text-[11px] uppercase"
             style={{
               borderColor: alpha(paperColor, "33"),
               color: alpha(paperColor, "80"),

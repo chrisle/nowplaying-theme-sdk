@@ -60,6 +60,18 @@ function alpha(color: string, a: string): string {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? `${color}${a}` : color;
 }
 
+// Leetspeak substitutions for the optional hacker-letters mode (O T I S only)
+const LEET_MAP: Record<string, string> = {
+  I: "1",
+  O: "0",
+  S: "5",
+  T: "7",
+};
+
+function toLeet(s: string): string {
+  return s.replace(/[iost]/gi, (c) => LEET_MAP[c.toUpperCase()] ?? c);
+}
+
 /** 4-hex-digit code derived from the track — changes with every song */
 function trackHex(title: string, artist: string): string {
   let h = 0;
@@ -231,6 +243,8 @@ interface CyberpunkThemeProps {
   showEqualizer?: boolean;
   showHolo?: boolean;
   showShadow?: boolean;
+  hackerText?: boolean;
+  headerText?: string;
   panelColor?: string;
   paperColor?: string;
   screenColor?: string;
@@ -256,6 +270,8 @@ function CyberpunkTheme({
   showEqualizer = true,
   showHolo = true,
   showShadow = true,
+  hackerText = false,
+  headerText = "Now_Playing",
   panelColor = "#0b0b0d",
   paperColor = "#f4f4f1",
   screenColor = "#d9eaf7",
@@ -273,6 +289,10 @@ function CyberpunkTheme({
   const [phase, setPhase] = useState<Phase>("rest");
   const hex = useMemo(() => trackHex(title, artist), [title, artist]);
   const indexNo = useMemo(() => parseInt(hex, 16) % 1000, [hex]);
+
+  const displayTitle = hackerText ? toLeet(title) : title;
+  const displayArtist = hackerText ? toLeet(artist) : artist;
+  const displayLabel = label && hackerText ? toLeet(label) : label;
 
   // Load the HUD fonts once, shared by every instance of this theme
   useEffect(() => {
@@ -602,10 +622,10 @@ function CyberpunkTheme({
                 }}
               />
               <span
-                className="text-[11px] font-bold uppercase"
+                className="truncate text-[11px] font-bold uppercase"
                 style={{ color: panelColor, letterSpacing: "0.32em" }}
               >
-                Now_Playing
+                {headerText}
               </span>
             </div>
             <div
@@ -669,10 +689,10 @@ function CyberpunkTheme({
                 }}
               >
                 <TypeReveal
-                  text={title}
+                  text={displayTitle}
                   phase={phase}
                   delay={850}
-                  caretColor={paperColor}
+                  caretColor={alpha(paperColor, "59")}
                 />
               </div>
               <div
@@ -694,10 +714,10 @@ function CyberpunkTheme({
                   }}
                 >
                   <TypeReveal
-                    text={artist}
+                    text={displayArtist}
                     phase={phase}
                     delay={1050}
-                    caretColor={paperColor}
+                    caretColor={alpha(paperColor, "59")}
                   />
                 </span>
                 {label && (
@@ -711,7 +731,7 @@ function CyberpunkTheme({
                       letterSpacing: "0.1em",
                     }}
                   >
-                    {label}
+                    {displayLabel}
                   </span>
                 )}
               </div>
@@ -820,6 +840,8 @@ interface CyberpunkProps {
   showEqualizer?: boolean;
   showHolo?: boolean;
   showShadow?: boolean;
+  hackerText?: boolean;
+  headerText?: string;
   panelColor?: string;
   paperColor?: string;
   screenColor?: string;
@@ -841,6 +863,8 @@ export function Cyberpunk({
   showEqualizer,
   showHolo,
   showShadow,
+  hackerText,
+  headerText,
   panelColor,
   paperColor,
   screenColor,
@@ -861,6 +885,8 @@ export function Cyberpunk({
           showEqualizer={showEqualizer}
           showHolo={showHolo}
           showShadow={showShadow}
+          hackerText={hackerText}
+          headerText={headerText}
           panelColor={panelColor}
           paperColor={paperColor}
           screenColor={screenColor}

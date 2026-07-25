@@ -206,16 +206,30 @@ function WireCube({
 }) {
   const half = size / 2;
   const cell = size / 4;
-  const gridLine = alpha(color, "40");
-  const faceStyle = (transform: string): React.CSSProperties => ({
-    position: "absolute",
-    width: size,
-    height: size,
-    border: `1px solid ${alpha(color, "bb")}`,
-    backgroundImage: `repeating-linear-gradient(0deg, ${gridLine} 0px, ${gridLine} 1px, transparent 1px, transparent ${cell}px), repeating-linear-gradient(90deg, ${gridLine} 0px, ${gridLine} 1px, transparent 1px, transparent ${cell}px)`,
-    backgroundColor: alpha(color, "0a"),
-    transform,
-  });
+  // Each face is rendered twice with backface-visibility: the bright copy
+  // shows when it faces the viewer, the dim copy (pre-flipped 180°) shows
+  // when it's the far side — cheap depth cueing for the tumble.
+  const faceStyle = (transform: string, dim: boolean): React.CSSProperties => {
+    const gridLine = alpha(color, dim ? "1a" : "40");
+    return {
+      position: "absolute",
+      width: size,
+      height: size,
+      border: `1px solid ${alpha(color, dim ? "3a" : "bb")}`,
+      backgroundImage: `repeating-linear-gradient(0deg, ${gridLine} 0px, ${gridLine} 1px, transparent 1px, transparent ${cell}px), repeating-linear-gradient(90deg, ${gridLine} 0px, ${gridLine} 1px, transparent 1px, transparent ${cell}px)`,
+      backgroundColor: alpha(color, dim ? "05" : "0a"),
+      backfaceVisibility: "hidden",
+      transform: dim ? `${transform} rotateY(180deg)` : transform,
+    };
+  };
+  const FACES = [
+    `rotateY(0deg) translateZ(${half}px)`,
+    `rotateY(90deg) translateZ(${half}px)`,
+    `rotateY(180deg) translateZ(${half}px)`,
+    `rotateY(270deg) translateZ(${half}px)`,
+    `rotateX(90deg) translateZ(${half}px)`,
+    `rotateX(-90deg) translateZ(${half}px)`,
+  ];
   return (
     <div
       style={{
@@ -235,12 +249,12 @@ function WireCube({
         animate={{ rotateX: 360, rotateY: 720 }}
         transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
       >
-        <div style={faceStyle(`rotateY(0deg) translateZ(${half}px)`)} />
-        <div style={faceStyle(`rotateY(90deg) translateZ(${half}px)`)} />
-        <div style={faceStyle(`rotateY(180deg) translateZ(${half}px)`)} />
-        <div style={faceStyle(`rotateY(270deg) translateZ(${half}px)`)} />
-        <div style={faceStyle(`rotateX(90deg) translateZ(${half}px)`)} />
-        <div style={faceStyle(`rotateX(-90deg) translateZ(${half}px)`)} />
+        {FACES.map((t, i) => (
+          <div key={`front-${i}`} style={faceStyle(t, false)} />
+        ))}
+        {FACES.map((t, i) => (
+          <div key={`back-${i}`} style={faceStyle(t, true)} />
+        ))}
       </motion.div>
     </div>
   );

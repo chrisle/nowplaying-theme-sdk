@@ -10,7 +10,7 @@ import { AlbumArt } from "../components/album-art";
 // Exit is the mechanical reverse — backspace, close, fold up, retract.
 
 const EXIT_MS = 1450;
-const ENTER_MS = 3000;
+const ENTER_MS = 3600;
 
 const MONO_FONT = "'Space Mono', ui-monospace, monospace";
 
@@ -96,22 +96,31 @@ function TypeReveal({
   text,
   phase,
   delay = 0,
+  active = true,
+  onDone,
   className,
   style,
-  caret = true,
+  caret = "always",
   caretColor = "#f4f4f1",
 }: {
   text: string;
   phase: Phase;
   delay?: number;
+  /** Typing waits until this flips true — used to chain title → artist */
+  active?: boolean;
+  /** Fires once the full string is on screen */
+  onDone?: () => void;
   className?: string;
   style?: React.CSSProperties;
-  caret?: boolean;
+  /** "always" keeps the caret blinking at rest; "typing" hides it once done */
+  caret?: "always" | "typing" | false;
   caretColor?: string;
 }) {
   const [count, setCount] = useState(text.length);
   const countRef = useRef(count);
   countRef.current = count;
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   useEffect(() => {
     // Exit: backspace the current line out
@@ -123,9 +132,12 @@ function TypeReveal({
       return () => clearInterval(id);
     }
 
-    // Enter/rest: type toward the full string after the stage delay
+    // Enter/rest: type toward the full string after the stage delay,
+    // holding until an upstream line finishes when chained via `active`
+    if (!active) return;
     if (countRef.current >= text.length) {
       setCount(text.length);
+      onDoneRef.current?.();
       return;
     }
     const chunk = Math.max(1, Math.ceil(text.length / 28));
@@ -133,38 +145,43 @@ function TypeReveal({
     // resumed at rest (e.g. after an interrupted transition) start right away.
     const startDelay = phase === "enter" ? delay : 0;
     let interval: ReturnType<typeof setInterval> | undefined;
+    let current = countRef.current;
     const timeout = setTimeout(() => {
       interval = setInterval(() => {
-        setCount((c) => {
-          const next = Math.min(text.length, c + chunk);
-          if (next >= text.length && interval) clearInterval(interval);
-          return next;
-        });
+        current = Math.min(text.length, current + chunk);
+        setCount(current);
+        if (current >= text.length) {
+          if (interval) clearInterval(interval);
+          onDoneRef.current?.();
+        }
       }, 65);
     }, startDelay);
     return () => {
       clearTimeout(timeout);
       if (interval) clearInterval(interval);
     };
-  }, [text, phase, delay]);
+  }, [text, phase, delay, active]);
 
   // Rolling decode window: only while actively typing (count moving between
   // 1 and full length, outside the exit teardown)
   const shown = Math.min(count, text.length);
+  const typing = shown < text.length;
   const scramble =
-    phase !== "exit" && shown > 0 && shown < text.length
+    phase !== "exit" && active && shown > 0 && typing
       ? text
           .slice(shown, Math.min(shown + 3, text.length))
           .split("")
           .map((c) => (c === " " ? " " : cycleChar()))
           .join("")
       : "";
+  const showCaret =
+    caret === "always" || (caret === "typing" && (typing || phase === "exit"));
 
   return (
     <span className={className} style={style}>
       {text.slice(0, shown)}
       {scramble && <span style={{ opacity: 0.55 }}>{scramble}</span>}
-      {caret && (
+      {showCaret && (
         <motion.span
           className="ml-[3px] inline-block w-[0.45em]"
           style={{ height: "0.9em", backgroundColor: caretColor }}
@@ -199,17 +216,21 @@ function CountUp({
     // merely changed (e.g. enter → rest) so the numeral never double-counts.
     const fromScratch = prevValue.current !== value;
     prevValue.current = value;
-    let current = fromScratch ? 0 : Math.min(shownRef.current, value);
-    if (current >= value) {
+    const from = fromScratch ? 0 : Math.min(shownRef.current, value);
+    if (from >= value) {
       setShown(value);
       return;
     }
-    const step = Math.max(1, Math.ceil(value / 20));
+    // Fast ease-out spin: big jumps early, settling onto the target
+    const TICKS = 16;
+    let k = 0;
     const id = setInterval(() => {
-      current = Math.min(value, current + step);
-      setShown(current);
-      if (current >= value) clearInterval(id);
-    }, 50);
+      k++;
+      const t = k / TICKS;
+      const eased = 1 - (1 - t) * (1 - t);
+      setShown(Math.round(from + (value - from) * eased));
+      if (k >= TICKS) clearInterval(id);
+    }, 40);
     return () => clearInterval(id);
   }, [value, phase]);
 
@@ -291,6 +312,8 @@ function CyberpunkTheme({
   const footerControls = useAnimation();
 
   const [phase, setPhase] = useState<Phase>("rest");
+  // Chains the typewriter lines: the artist waits for the title to finish
+  const [titleDone, setTitleDone] = useState(true);
   const hex = useMemo(() => trackHex(title, artist), [title, artist]);
   const indexNo = useMemo(() => parseInt(hex, 16) % 1000, [hex]);
 
@@ -312,6 +335,7 @@ function CyberpunkTheme({
     if (!isAnimating) {
       // Snap to fully-assembled state (initial load or animation complete)
       setPhase("rest");
+      setTitleDone(true);
       traceControls.start("in");
       panelControls.set({ clipPath: "inset(0 0 0% 0)", opacity: 1 });
       headerControls.set({ opacity: 1, x: 0 });
@@ -324,6 +348,7 @@ function CyberpunkTheme({
     const runAnimation = async () => {
       // Phase 1: Exit — tear the label down, quick mechanical reverse
       setPhase("exit");
+      setTitleDone(false);
       await Promise.all([
         footerControls.start({
           opacity: 0,
@@ -494,8 +519,8 @@ function CyberpunkTheme({
           <motion.span
             className="absolute whitespace-nowrap text-[9px]"
             style={{
-              right: 24,
-              top: 16,
+              right: 26,
+              top: 0,
               color: alpha(paperColor, "99"),
               fontFamily: MONO_FONT,
               letterSpacing: "0.14em",
@@ -507,7 +532,7 @@ function CyberpunkTheme({
             initial="in"
             animate={traceControls}
           >
-            VER 127.129 // 0x{hex}
+            VER 127.129
           </motion.span>
         </div>
       )}
@@ -702,6 +727,8 @@ function CyberpunkTheme({
                   text={displayTitle}
                   phase={phase}
                   delay={850}
+                  caret="typing"
+                  onDone={() => setTitleDone(true)}
                   caretColor={alpha(paperColor, "59")}
                 />
               </div>
@@ -727,7 +754,9 @@ function CyberpunkTheme({
                   <TypeReveal
                     text={displayArtist}
                     phase={phase}
-                    delay={1050}
+                    delay={150}
+                    active={titleDone}
+                    caret="always"
                     caretColor={alpha(paperColor, "59")}
                   />
                 </span>

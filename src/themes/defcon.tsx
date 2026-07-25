@@ -257,10 +257,11 @@ function CountUp({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const [shown, setShown] = useState(value);
+  // Start at zero so the numeral counts up on first mount, not just on change
+  const [shown, setShown] = useState(0);
   const shownRef = useRef(shown);
   shownRef.current = shown;
-  const prevValue = useRef(value);
+  const prevValue = useRef(-1);
 
   useEffect(() => {
     if (phase === "exit") return;
@@ -869,7 +870,7 @@ function DefconTheme({
 
             {/* Index numeral block */}
             <motion.div
-              className="ml-6 hidden w-[100px] flex-shrink-0 flex-col items-end gap-1 self-center pr-6 md:flex"
+              className="ml-6 hidden w-[86px] flex-shrink-0 flex-col items-end gap-1 self-center pr-6 md:flex"
               animate={footerControls}
               initial={{ opacity: 1, y: 0 }}
             >
@@ -888,9 +889,9 @@ function DefconTheme({
                 phase={phase}
                 className="leading-none"
                 style={{
-                  fontSize: 38,
+                  fontSize: 26,
                   color: accentColor,
-                  textShadow: showGlow ? glowOf(accentColor, 9) : undefined,
+                  textShadow: showGlow ? glowOf(accentColor, 8) : undefined,
                 }}
               />
               <span

@@ -294,7 +294,7 @@ function CyberpunkTheme({
   showEqualizer = true,
   showShadow = true,
   showGlow = true,
-  hackerText = false,
+  hackerText = true,
   headerText = "Now_Playing",
   panelColor = "#0c111e",
   paperColor = "#f4f4f1",

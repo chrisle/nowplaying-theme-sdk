@@ -246,45 +246,69 @@ function WireCube({
   );
 }
 
-interface GlitchSlice {
-  top: number;
-  height: number;
-  dx: number;
-  chroma: boolean;
+// Grayscale static tile for the TV-snow bursts (SVG turbulence noise)
+const NOISE_URI = `data:image/svg+xml;utf8,${encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='120' height='120' filter='url(#n)' opacity='0.9'/></svg>",
+)}`;
+
+interface TvBurst {
+  id: number;
+  duration: number;
+  artFlicker: number[];
+  artJitter: number[];
+  noiseFlicker: number[];
+  noiseDrift: string[];
 }
 
 /**
- * Randomly-timed TV interference bursts: every few seconds a couple of
- * horizontal slices of the artwork tear sideways for a few frames.
+ * Randomly-timed TV interference: every few seconds the artwork flickers in
+ * and out for a few frames behind a rolling static-snow overlay.
  */
-function useTvGlitch(enabled: boolean): GlitchSlice[] | null {
-  const [slices, setSlices] = useState<GlitchSlice[] | null>(null);
+function useTvGlitch(enabled: boolean): TvBurst | null {
+  const [burst, setBurst] = useState<TvBurst | null>(null);
 
   useEffect(() => {
     if (!enabled) {
-      setSlices(null);
+      setBurst(null);
       return;
     }
     let alive = true;
     let idleTimer: ReturnType<typeof setTimeout>;
     let burstTimer: ReturnType<typeof setTimeout>;
+    const rand = (min: number, max: number) => min + Math.random() * (max - min);
     const schedule = () => {
       idleTimer = setTimeout(() => {
         if (!alive) return;
-        setSlices(
-          Array.from({ length: 2 + Math.floor(Math.random() * 2) }, () => ({
-            top: Math.random() * 82,
-            height: 4 + Math.random() * 14,
-            dx: (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 9),
-            chroma: Math.random() < 0.5,
-          })),
+        const frames = 7;
+        const duration = rand(0.3, 0.55);
+        setBurst({
+          id: performance.now(),
+          duration,
+          // Art drops in and out; always lands back at full opacity
+          artFlicker: Array.from({ length: frames }, (_, i) =>
+            i === frames - 1 ? 1 : rand(0.05, 0.85),
+          ),
+          artJitter: Array.from({ length: frames }, (_, i) =>
+            i === frames - 1 ? 0 : rand(-4, 4),
+          ),
+          // Snow fades in, sputters, and cuts out
+          noiseFlicker: Array.from({ length: frames }, (_, i) =>
+            i === 0 || i === frames - 1 ? 0 : rand(0.35, 0.95),
+          ),
+          noiseDrift: Array.from(
+            { length: frames },
+            () => `${rand(0, 90).toFixed(0)}px ${rand(0, 90).toFixed(0)}px`,
+          ),
+        });
+        burstTimer = setTimeout(
+          () => {
+            if (!alive) return;
+            setBurst(null);
+            schedule();
+          },
+          duration * 1000 + 60,
         );
-        burstTimer = setTimeout(() => {
-          if (!alive) return;
-          setSlices(null);
-          schedule();
-        }, 180 + Math.random() * 220);
-      }, 3500 + Math.random() * 5500);
+      }, rand(3500, 9000));
     };
     schedule();
     return () => {
@@ -294,7 +318,7 @@ function useTvGlitch(enabled: boolean): GlitchSlice[] | null {
     };
   }, [enabled]);
 
-  return slices;
+  return burst;
 }
 
 /** Index numeral that counts up to its value when the track changes */
@@ -427,7 +451,7 @@ function DefconTheme({
   const displayLabel = label && hackerText ? toLeet(label) : label;
 
   // Random TV-interference bursts over the artwork
-  const glitchSlices = useTvGlitch(showArtwork && !!artwork);
+  const glitchBurst = useTvGlitch(showArtwork && !!artwork);
 
   // Load the HUD fonts once, shared by every instance of this theme
   useEffect(() => {
@@ -795,33 +819,55 @@ function DefconTheme({
                   }}
                 >
                   <div className="relative overflow-hidden">
-                    <AlbumArt src={artwork} size="xl" className="!rounded-none" />
-                    {/* TV interference: torn slices of the art shift sideways */}
-                    {glitchSlices?.map((s, i) => (
-                      <div
-                        key={i}
-                        className="pointer-events-none absolute inset-0"
-                        style={{
-                          backgroundImage: `url("${artwork}")`,
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                          clipPath: `inset(${s.top}% 0 ${Math.max(0, 100 - s.top - s.height)}% 0)`,
-                          transform: `translateX(${s.dx}px)`,
-                          filter: s.chroma
-                            ? "hue-rotate(80deg) saturate(2.2)"
-                            : undefined,
-                        }}
-                      />
-                    ))}
-                    {glitchSlices && (
-                      <div
-                        className="pointer-events-none absolute inset-0"
-                        style={{
-                          background:
-                            "repeating-linear-gradient(0deg, rgba(255,255,255,0.09) 0px, rgba(255,255,255,0.09) 1px, transparent 1px, transparent 3px)",
-                          mixBlendMode: "screen",
-                        }}
-                      />
+                    {/* TV interference: the art itself flickers in and out */}
+                    <motion.div
+                      animate={
+                        glitchBurst
+                          ? {
+                              opacity: glitchBurst.artFlicker,
+                              x: glitchBurst.artJitter,
+                            }
+                          : { opacity: 1, x: 0 }
+                      }
+                      transition={
+                        glitchBurst
+                          ? { duration: glitchBurst.duration, ease: "linear" }
+                          : { duration: 0.15 }
+                      }
+                    >
+                      <AlbumArt src={artwork} size="xl" className="!rounded-none" />
+                    </motion.div>
+                    {glitchBurst && (
+                      <>
+                        {/* Rolling static snow */}
+                        <motion.div
+                          key={glitchBurst.id}
+                          className="pointer-events-none absolute inset-0"
+                          style={{
+                            backgroundImage: `url("${NOISE_URI}")`,
+                            backgroundSize: "90px 90px",
+                            mixBlendMode: "screen",
+                          }}
+                          initial={{ opacity: 0 }}
+                          animate={{
+                            opacity: glitchBurst.noiseFlicker,
+                            backgroundPosition: glitchBurst.noiseDrift,
+                          }}
+                          transition={{
+                            duration: glitchBurst.duration,
+                            ease: "linear",
+                          }}
+                        />
+                        {/* Scanline flash */}
+                        <div
+                          className="pointer-events-none absolute inset-0"
+                          style={{
+                            background:
+                              "repeating-linear-gradient(0deg, rgba(255,255,255,0.09) 0px, rgba(255,255,255,0.09) 1px, transparent 1px, transparent 3px)",
+                            mixBlendMode: "screen",
+                          }}
+                        />
+                      </>
                     )}
                   </div>
                   <div

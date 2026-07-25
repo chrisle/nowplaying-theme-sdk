@@ -194,6 +194,57 @@ function TypeReveal({
   );
 }
 
+interface GlitchSlice {
+  top: number;
+  height: number;
+  dx: number;
+  chroma: boolean;
+}
+
+/**
+ * Randomly-timed TV interference bursts: every few seconds a couple of
+ * horizontal slices of the artwork tear sideways for a few frames.
+ */
+function useTvGlitch(enabled: boolean): GlitchSlice[] | null {
+  const [slices, setSlices] = useState<GlitchSlice[] | null>(null);
+
+  useEffect(() => {
+    if (!enabled) {
+      setSlices(null);
+      return;
+    }
+    let alive = true;
+    let idleTimer: ReturnType<typeof setTimeout>;
+    let burstTimer: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      idleTimer = setTimeout(() => {
+        if (!alive) return;
+        setSlices(
+          Array.from({ length: 2 + Math.floor(Math.random() * 2) }, () => ({
+            top: Math.random() * 82,
+            height: 4 + Math.random() * 14,
+            dx: (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 9),
+            chroma: Math.random() < 0.5,
+          })),
+        );
+        burstTimer = setTimeout(() => {
+          if (!alive) return;
+          setSlices(null);
+          schedule();
+        }, 180 + Math.random() * 220);
+      }, 3500 + Math.random() * 5500);
+    };
+    schedule();
+    return () => {
+      alive = false;
+      clearTimeout(idleTimer);
+      clearTimeout(burstTimer);
+    };
+  }, [enabled]);
+
+  return slices;
+}
+
 /** Index numeral that counts up to its value when the track changes */
 function CountUp({
   value,
@@ -321,6 +372,9 @@ function DefconTheme({
   const displayTitle = hackerText ? toLeet(title) : title;
   const displayArtist = hackerText ? toLeet(artist) : artist;
   const displayLabel = label && hackerText ? toLeet(label) : label;
+
+  // Random TV-interference bursts over the artwork
+  const glitchSlices = useTvGlitch(showArtwork && !!artwork);
 
   // Load the HUD fonts once, shared by every instance of this theme
   useEffect(() => {
@@ -687,7 +741,36 @@ function DefconTheme({
                     clipPath: CHIP_CLIP,
                   }}
                 >
-                  <AlbumArt src={artwork} size="xl" className="!rounded-none" />
+                  <div className="relative overflow-hidden">
+                    <AlbumArt src={artwork} size="xl" className="!rounded-none" />
+                    {/* TV interference: torn slices of the art shift sideways */}
+                    {glitchSlices?.map((s, i) => (
+                      <div
+                        key={i}
+                        className="pointer-events-none absolute inset-0"
+                        style={{
+                          backgroundImage: `url("${artwork}")`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                          clipPath: `inset(${s.top}% 0 ${Math.max(0, 100 - s.top - s.height)}% 0)`,
+                          transform: `translateX(${s.dx}px)`,
+                          filter: s.chroma
+                            ? "hue-rotate(80deg) saturate(2.2)"
+                            : undefined,
+                        }}
+                      />
+                    ))}
+                    {glitchSlices && (
+                      <div
+                        className="pointer-events-none absolute inset-0"
+                        style={{
+                          background:
+                            "repeating-linear-gradient(0deg, rgba(255,255,255,0.09) 0px, rgba(255,255,255,0.09) 1px, transparent 1px, transparent 3px)",
+                          mixBlendMode: "screen",
+                        }}
+                      />
+                    )}
+                  </div>
                   <div
                     className="flex items-center justify-between pt-[3px] text-[8px] uppercase"
                     style={{ color: "#33506b", fontFamily: MONO_FONT }}

@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 
 /**
- * Vite config used by `npm run build:bundle`.
+ * Vite config used by `npm run build`.
  *
  * Builds the bundle entry as a single JS module so each per-theme HTML can
  * include the same shared script. Outputs to `dist-bundle/` which the bundle

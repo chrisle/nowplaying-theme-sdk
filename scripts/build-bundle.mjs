@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * Build a Now Playing theme bundle.
+ * Build a Now Playing theme bundle — run via `npm run build`.
+ *
+ * The output is a ZIP archive carrying the `.np3theme` extension, which is what
+ * the Now Playing dashboard's Custom Themes upload expects.
  *
  * 1. Reads `bundle.config.json` to learn which themes to ship.
  * 2. Runs Vite with `vite.bundle.config.ts` to produce a single shared JS+CSS
@@ -10,14 +13,21 @@
  *      shared/entry.js
  *      shared/style.css
  *      themes/<id>/index.html       (one per theme, sets <meta name="np-theme">)
- * 4. Zips the staging directory into `dist-bundle/<slug>.zip`.
+ * 4. Zips the staging directory into `dist-bundle/<slug>.np3theme`.
  *
  * The output ZIP is what users upload via the Custom Themes panel on
  * https://app.nowplayingapp.com.
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, cpSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+  cpSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import JSZip from "jszip";
@@ -33,7 +43,7 @@ const DIST_DIR = join(ROOT, "dist-bundle");
 const STAGING_DIR = join(DIST_DIR, "staging");
 
 function log(msg) {
-  process.stdout.write(`[build:bundle] ${msg}\n`);
+  process.stdout.write(`[build] ${msg}\n`);
 }
 
 function readConfig() {
@@ -60,7 +70,6 @@ function readConfig() {
 function runVite() {
   log("Running vite build (bundle config)...");
   // We invoke the CLI rather than the programmatic API so the resolved
-  // tsconfig + jsx settings exactly match what `npm run build` would do.
   execFileSync("npx", ["vite", "build", "--config", VITE_CONFIG], {
     stdio: "inherit",
     cwd: ROOT,
@@ -173,8 +182,8 @@ async function buildStaging(config) {
 
 async function zipStaging(config) {
   const slug = slugify(config.name ?? "themes");
-  const outPath = join(DIST_DIR, `${slug}.zip`);
-  log(`Zipping bundle to ${outPath}...`);
+  const outPath = join(DIST_DIR, `${slug}.np3theme`);
+  log(`Packaging bundle to ${outPath}...`);
 
   const zip = new JSZip();
 
@@ -210,10 +219,12 @@ async function main() {
   log(
     `Done. ${manifest.themes.length} theme${manifest.themes.length === 1 ? "" : "s"} packaged.`,
   );
-  log(`Upload ${outPath} on https://app.nowplayingapp.com/dashboard/overlays/configure.`);
+  log(
+    `Upload ${outPath} on https://app.nowplayingapp.com/dashboard/overlays/configure.`,
+  );
 }
 
 main().catch((err) => {
-  process.stderr.write(`[build:bundle] error: ${err.message ?? err}\n`);
+  process.stderr.write(`[build] error: ${err.message ?? err}\n`);
   process.exit(1);
 });

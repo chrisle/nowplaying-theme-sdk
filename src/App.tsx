@@ -2,9 +2,6 @@ import { useState, useCallback, useMemo } from "react";
 import { EnrichedTrack } from "./types";
 import { MOCK_TRACKS } from "./mock-data";
 import { Clean } from "./themes/clean";
-import { Asot2K3 } from "./themes/asot-2k3";
-import { Kinetik3D } from "./themes/kinetik-3d";
-import { Sideways } from "./themes/sideways";
 
 type FieldType = "color" | "boolean" | "number" | "string" | "range";
 
@@ -20,46 +17,80 @@ interface FieldDef {
 
 const THEME_FIELDS: Record<string, FieldDef[]> = {
   clean: [
-    { key: "showArtwork", label: "Show Artwork", type: "boolean", defaultValue: true },
-    { key: "alignRight", label: "Align Right", type: "boolean", defaultValue: false },
-    { key: "animateUp", label: "Animate Up", type: "boolean", defaultValue: false },
-    { key: "lineColor", label: "Line Color", type: "color", defaultValue: "#ff0000" },
-    { key: "textColor", label: "Text Color", type: "color", defaultValue: "#ffffff" },
-    { key: "textStrokeColor", label: "Stroke Color", type: "color", defaultValue: "#000000" },
-    { key: "textStrokeWidth", label: "Stroke Width", type: "number", defaultValue: 2, min: 0, max: 10 },
-    { key: "fontFamily", label: "Font Family", type: "string", defaultValue: "Rubik, system-ui, sans-serif" },
-    { key: "fontSize.artist", label: "Artist Size", type: "number", defaultValue: 40, min: 10, max: 120 },
-    { key: "fontSize.title", label: "Title Size", type: "number", defaultValue: 50, min: 10, max: 120 },
-    { key: "fontSize.label", label: "Label Size", type: "number", defaultValue: 30, min: 10, max: 120 },
-  ],
-  "asot-2k3": [
-    { key: "lineColor", label: "Line Color", type: "color", defaultValue: "#ffffff" },
-    { key: "fontFamily", label: "Font Family", type: "string", defaultValue: "Helvetica Neue" },
-    { key: "fontSize.header", label: "Header Size", type: "number", defaultValue: 40, min: 10, max: 120 },
-    { key: "fontSize.artist", label: "Artist Size", type: "number", defaultValue: 30, min: 10, max: 120 },
-    { key: "fontSize.title", label: "Title Size", type: "number", defaultValue: 30, min: 10, max: 120 },
-    { key: "fontSize.label", label: "Label Size", type: "number", defaultValue: 24, min: 10, max: 120 },
-  ],
-  "kinetik-3d": [
-    { key: "redColor", label: "Red Layer", type: "color", defaultValue: "#ff0000" },
-    { key: "greenColor", label: "Green Layer", type: "color", defaultValue: "#00ff00" },
-    { key: "blueColor", label: "Blue Layer", type: "color", defaultValue: "#0000ff" },
-    { key: "overlayColor", label: "Overlay", type: "color", defaultValue: "#ffffff" },
-    { key: "speed", label: "Speed", type: "range", defaultValue: 1, min: 0, max: 2, step: 0.1 },
-    { key: "fontFamily", label: "Font Family", type: "string", defaultValue: "'Mukta Mahee', sans-serif" },
-    { key: "fontSize", label: "Title Size", type: "number", defaultValue: 50, min: 10, max: 120 },
-    { key: "artistFontSize", label: "Artist Size", type: "number", defaultValue: 40, min: 10, max: 120 },
-  ],
-  sideways: [
-    { key: "titleBackgroundColor", label: "Title BG", type: "color", defaultValue: "#ff0000" },
-    { key: "artistBackgroundColor", label: "Artist BG", type: "color", defaultValue: "#ffffff" },
-    { key: "titleTextColor", label: "Title Text", type: "color", defaultValue: "#ffffff" },
-    { key: "artistTextColor", label: "Artist Text", type: "color", defaultValue: "#000000" },
-    { key: "labelTextColor", label: "Label Text", type: "color", defaultValue: "#ffffff" },
-    { key: "fontFamily", label: "Font Family", type: "string", defaultValue: "'Heebo', sans-serif" },
-    { key: "fontSize.title", label: "Title Size", type: "number", defaultValue: 38, min: 10, max: 120 },
-    { key: "fontSize.artist", label: "Artist Size", type: "number", defaultValue: 40, min: 10, max: 120 },
-    { key: "fontSize.label", label: "Label Size", type: "number", defaultValue: 30, min: 10, max: 120 },
+    {
+      key: "showArtwork",
+      label: "Show Artwork",
+      type: "boolean",
+      defaultValue: true,
+    },
+    {
+      key: "alignRight",
+      label: "Align Right",
+      type: "boolean",
+      defaultValue: false,
+    },
+    {
+      key: "animateUp",
+      label: "Animate Up",
+      type: "boolean",
+      defaultValue: false,
+    },
+    {
+      key: "lineColor",
+      label: "Line Color",
+      type: "color",
+      defaultValue: "#ff0000",
+    },
+    {
+      key: "textColor",
+      label: "Text Color",
+      type: "color",
+      defaultValue: "#ffffff",
+    },
+    {
+      key: "textStrokeColor",
+      label: "Stroke Color",
+      type: "color",
+      defaultValue: "#000000",
+    },
+    {
+      key: "textStrokeWidth",
+      label: "Stroke Width",
+      type: "number",
+      defaultValue: 2,
+      min: 0,
+      max: 10,
+    },
+    {
+      key: "fontFamily",
+      label: "Font Family",
+      type: "string",
+      defaultValue: "Rubik, system-ui, sans-serif",
+    },
+    {
+      key: "fontSize.artist",
+      label: "Artist Size",
+      type: "number",
+      defaultValue: 40,
+      min: 10,
+      max: 120,
+    },
+    {
+      key: "fontSize.title",
+      label: "Title Size",
+      type: "number",
+      defaultValue: 50,
+      min: 10,
+      max: 120,
+    },
+    {
+      key: "fontSize.label",
+      label: "Label Size",
+      type: "number",
+      defaultValue: 30,
+      min: 10,
+      max: 120,
+    },
   ],
 };
 
@@ -83,12 +114,7 @@ function resolveOptions(
 }
 
 /** Registry of available themes for the selector */
-const THEMES = [
-  { id: "clean", name: "Clean", Component: Clean },
-  { id: "asot-2k3", name: "ASOT 2K3", Component: Asot2K3 },
-  { id: "kinetik-3d", name: "Kinetik 3D", Component: Kinetik3D },
-  { id: "sideways", name: "Sideways", Component: Sideways },
-] as const;
+const THEMES = [{ id: "clean", name: "Clean", Component: Clean }] as const;
 
 function isValidHex(s: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(s);

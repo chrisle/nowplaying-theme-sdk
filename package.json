@@ -5,14 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "build:bundle": "node scripts/build-bundle.mjs",
-    "build:source": "node scripts/build-source.mjs",
-    "build:from-source": "node scripts/build-from-source.mjs",
-    "convert-np2": "node scripts/convert-np2.mjs",
-    "reset-themes": "node scripts/reset-themes.mjs",
-    "preview": "vite preview",
-    "test": "node --test \"scripts/**/*.test.mjs\""
+    "build": "tsc && node scripts/build-bundle.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "motion": "^12.24.0",

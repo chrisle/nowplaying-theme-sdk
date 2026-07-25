@@ -60,6 +60,11 @@ function alpha(color: string, a: string): string {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? `${color}${a}` : color;
 }
 
+/** Two-layer neon bloom for text-shadow / box-shadow values */
+function glowOf(color: string, radius: number): string {
+  return `0 0 ${radius}px ${alpha(color, "b3")}, 0 0 ${radius * 2}px ${alpha(color, "40")}`;
+}
+
 // Leetspeak substitutions for the optional hacker-letters mode (O T I S only)
 const LEET_MAP: Record<string, string> = {
   I: "1",
@@ -264,6 +269,7 @@ interface CyberpunkThemeProps {
   showEqualizer?: boolean;
   showHolo?: boolean;
   showShadow?: boolean;
+  showGlow?: boolean;
   hackerText?: boolean;
   headerText?: string;
   panelColor?: string;
@@ -293,6 +299,7 @@ function CyberpunkTheme({
   showEqualizer = true,
   showHolo = false,
   showShadow = true,
+  showGlow = true,
   hackerText = false,
   headerText = "Now_Playing",
   panelColor = "#0c111e",
@@ -425,21 +432,27 @@ function CyberpunkTheme({
 
   // Panel-colored outline so the display text holds against the art backdrop
   // (text-shadow in 8 directions, same cross-browser trick as the Clean theme)
-  const textStroke =
+  const strokeShadow =
     textStrokeWidth > 0
-      ? {
-          textShadow: [
-            `-${textStrokeWidth}px -${textStrokeWidth}px 0 ${panelColor}`,
-            `${textStrokeWidth}px -${textStrokeWidth}px 0 ${panelColor}`,
-            `-${textStrokeWidth}px ${textStrokeWidth}px 0 ${panelColor}`,
-            `${textStrokeWidth}px ${textStrokeWidth}px 0 ${panelColor}`,
-            `0 -${textStrokeWidth}px 0 ${panelColor}`,
-            `0 ${textStrokeWidth}px 0 ${panelColor}`,
-            `-${textStrokeWidth}px 0 0 ${panelColor}`,
-            `${textStrokeWidth}px 0 0 ${panelColor}`,
-          ].join(", "),
-        }
-      : {};
+      ? [
+          `-${textStrokeWidth}px -${textStrokeWidth}px 0 ${panelColor}`,
+          `${textStrokeWidth}px -${textStrokeWidth}px 0 ${panelColor}`,
+          `-${textStrokeWidth}px ${textStrokeWidth}px 0 ${panelColor}`,
+          `${textStrokeWidth}px ${textStrokeWidth}px 0 ${panelColor}`,
+          `0 -${textStrokeWidth}px 0 ${panelColor}`,
+          `0 ${textStrokeWidth}px 0 ${panelColor}`,
+          `-${textStrokeWidth}px 0 0 ${panelColor}`,
+          `${textStrokeWidth}px 0 0 ${panelColor}`,
+        ].join(", ")
+      : "";
+  const textStroke = strokeShadow ? { textShadow: strokeShadow } : {};
+  // Artist line emits light: stroke first (keeps the edge), bloom on top
+  const artistShadow = [
+    strokeShadow || null,
+    showGlow ? glowOf(signalColor, 7) : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const holoStyle = {
     backgroundImage: HOLO_GRADIENT,
@@ -471,7 +484,12 @@ function CyberpunkTheme({
             height={56}
             viewBox="0 0 240 56"
             fill="none"
-            style={{ overflow: "visible" }}
+            style={{
+              overflow: "visible",
+              filter: showGlow
+                ? `drop-shadow(0 0 3px ${alpha(signalColor, "99")})`
+                : undefined,
+            }}
           >
             <motion.path
               d="M 127 52 L 127 26 L 143 10 L 222 10"
@@ -504,6 +522,7 @@ function CyberpunkTheme({
               width: 9,
               height: 9,
               rotate: 45,
+              boxShadow: showGlow ? glowOf(accentColor, 6) : undefined,
               ...(showHolo
                 ? holoStyle
                 : { backgroundColor: accentColor }),
@@ -589,6 +608,7 @@ function CyberpunkTheme({
               style={{
                 top: 16,
                 background: `linear-gradient(180deg, ${accentColor}, ${alpha(accentColor, "1a")})`,
+                boxShadow: showGlow ? glowOf(accentColor, 7) : undefined,
               }}
             />
           )}
@@ -748,7 +768,7 @@ function CyberpunkTheme({
                     letterSpacing: "0.2em",
                     fontFamily: MONO_FONT,
                     color: signalColor,
-                    ...textStroke,
+                    textShadow: artistShadow || undefined,
                   }}
                 >
                   <TypeReveal
@@ -806,7 +826,11 @@ function CyberpunkTheme({
                 value={indexNo}
                 phase={phase}
                 className="leading-none"
-                style={{ fontSize: 30, color: accentColor }}
+                style={{
+                  fontSize: 30,
+                  color: accentColor,
+                  textShadow: showGlow ? glowOf(accentColor, 9) : undefined,
+                }}
               />
               <span
                 className="text-[10px]"
@@ -891,6 +915,7 @@ interface CyberpunkProps {
   showEqualizer?: boolean;
   showHolo?: boolean;
   showShadow?: boolean;
+  showGlow?: boolean;
   hackerText?: boolean;
   headerText?: string;
   panelColor?: string;
@@ -916,6 +941,7 @@ export function Cyberpunk({
   showEqualizer,
   showHolo,
   showShadow,
+  showGlow,
   hackerText,
   headerText,
   panelColor,
@@ -940,6 +966,7 @@ export function Cyberpunk({
           showEqualizer={showEqualizer}
           showHolo={showHolo}
           showShadow={showShadow}
+          showGlow={showGlow}
           hackerText={hackerText}
           headerText={headerText}
           panelColor={panelColor}

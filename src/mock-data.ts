@@ -75,4 +75,19 @@ export const MOCK_TRACKS: EnrichedTrack[] = [
     timestamp: new Date().toISOString(),
     enrichedAt: new Date().toISOString(),
   },
+  {
+    // Deliberately repeats the previous artist and omits artwork so themes can
+    // be exercised against same-artist transitions and the placeholder path.
+    id: "test-006",
+    artist: "Swedish House Mafia",
+    title: "Greyhound",
+    label: "Astralwerks",
+    genre: "Progressive House",
+    bpm: 128,
+    key: "Cm",
+    signature: "swedish-house-mafia|greyhound",
+    source: "mock",
+    timestamp: new Date().toISOString(),
+    enrichedAt: new Date().toISOString(),
+  },
 ];

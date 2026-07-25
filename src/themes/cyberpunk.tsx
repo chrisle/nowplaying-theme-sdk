@@ -5,59 +5,51 @@ import { BaseOverlay, ThemeRenderProps } from "../components/base-overlay";
 import { AlbumArt } from "../components/album-art";
 
 // ── Animation config ────────────────────────────────────────────────
+// The overlay assembles like a die-cut label being printed: trace draws,
+// panel wipes down, LCD window opens, text types in, metadata stamps on.
+// Exit is the mechanical reverse — backspace, close, fold up, retract.
 
-const EXIT_DURATION = 0.4;
-const ENTER_DURATION = 0.5;
-const STAGGER = 0.06;
-// BaseOverlay lifecycle budgets (ms): must cover duration + max stagger,
-// plus the decode-in which runs ~0.7s after the track data swaps.
-const EXIT_MS = 650;
-const ENTER_MS = 1050;
+const EXIT_MS = 950;
+const ENTER_MS = 3000;
 
-const MONO_FONT = "'Share Tech Mono', 'JetBrains Mono', ui-monospace, monospace";
+const MONO_FONT = "'Space Mono', ui-monospace, monospace";
 
-// Self-hosted nothing — the HUD fonts load from Google Fonts at runtime so the
-// theme works both in the playground and inside a bundled overlay iframe.
+// HUD fonts load from Google Fonts at runtime so the theme works both in the
+// playground and inside a bundled overlay iframe.
 const FONT_LINK_ID = "np3-cyberpunk-fonts";
 const FONT_URL =
-  "https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@500;600&family=Share+Tech+Mono&display=swap";
+  "https://fonts.googleapis.com/css2?family=Michroma&family=Space+Mono:wght@400;700&display=swap";
 
-// Notched-corner panel, straight out of the CP2077 menu chrome
-const PANEL_CLIP =
-  "polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px))";
+// Die-cut sticker silhouette: 45° chamfers of varying sizes plus stepped
+// edges along the top and bottom runs — no plain rectangle corners.
+const PANEL_CLIP = `polygon(
+  0 16px, 16px 0,
+  60% 0, calc(60% + 14px) 12px,
+  calc(100% - 32px) 12px, 100% 44px,
+  100% calc(100% - 16px), calc(100% - 16px) 100%,
+  30% 100%, calc(30% - 10px) calc(100% - 8px),
+  0 calc(100% - 8px)
+)`;
 
-const ART_CLIP =
-  "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)";
+// Header paper slab with a slanted right edge (matches the top step)
+const SLAB_CLIP = "polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%)";
 
-// Glitch keyframe helpers — jittery x/skew with opacity flicker,
-// mimicking the CP2077 HUD's signal-interference transitions.
-const glitchOut = (delay: number) => ({
-  opacity: [1, 0.3, 0.85, 0.1, 0.5, 0],
-  x: [0, -6, 8, -14, 5, 20],
-  skewX: [0, -8, 6, -14, 4, 0],
-  transition: {
-    duration: EXIT_DURATION,
-    delay,
-    times: [0, 0.2, 0.35, 0.55, 0.75, 1],
-    ease: "linear" as const,
-  },
-});
+// Small chamfered chip (label tag, art caption)
+const CHIP_CLIP =
+  "polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))";
 
-const glitchIn = (delay: number) => ({
-  opacity: [0, 0.5, 0.1, 0.9, 0.4, 1],
-  x: [24, -10, 6, -3, 1, 0],
-  skewX: [12, -6, 8, -3, 1, 0],
-  transition: {
-    duration: ENTER_DURATION,
-    delay,
-    times: [0, 0.15, 0.3, 0.5, 0.75, 1],
-    ease: "linear" as const,
-  },
-});
-
-const REST = { opacity: 1, x: 0, skewX: 0 };
+// Holographic foil gradient — the one non-monochrome accent
+const HOLO_GRADIENT =
+  "linear-gradient(115deg, #f6c6de 0%, #c9f2df 22%, #cfe0f7 45%, #e6d3f7 68%, #f6e3c6 85%, #f6c6de 100%)";
 
 type Phase = "rest" | "exit" | "enter";
+
+// Glyphs the typing edge cycles through before each real letter settles
+const CYCLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#/<>*+";
+
+function cycleChar(): string {
+  return CYCLE_CHARS.charAt(Math.floor(Math.random() * CYCLE_CHARS.length));
+}
 
 /**
  * Append an alpha byte to a 6-digit hex color. Anything else (named colors,
@@ -67,119 +59,6 @@ type Phase = "rest" | "exit" | "enter";
 function alpha(color: string, a: string): string {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? `${color}${a}` : color;
 }
-
-// ── Decode-scramble text ────────────────────────────────────────────
-
-const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#$%&/<>*+=?!";
-
-function randChar(): string {
-  return SCRAMBLE_CHARS.charAt(
-    Math.floor(Math.random() * SCRAMBLE_CHARS.length),
-  );
-}
-
-/**
- * Terminal-style text that decodes character-by-character when `text` changes
- * (left to right, scramble resolving into the real string) and progressively
- * corrupts while the theme is in its exit phase.
- */
-function DecodeText({
-  text,
-  phase,
-  className,
-  style,
-}: {
-  text: string;
-  phase: Phase;
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  // Start scrambled so the first mount plays the boot-up decode
-  const [display, setDisplay] = useState(() =>
-    text.split("").map((c) => (c === " " ? c : randChar())).join(""),
-  );
-  const displayRef = useRef(display);
-  displayRef.current = display;
-
-  useEffect(() => {
-    // Exit phase: progressively corrupt the current string (signal loss)
-    if (phase === "exit") {
-      let corruption = 0;
-      const id = setInterval(() => {
-        corruption = Math.min(1, corruption + 0.2);
-        setDisplay(
-          text
-            .split("")
-            .map((c) =>
-              c !== " " && Math.random() < corruption ? randChar() : c,
-            )
-            .join(""),
-        );
-      }, 45);
-      return () => clearInterval(id);
-    }
-
-    // Enter/rest: decode toward the real text. Keyed on phase as well as text
-    // so the scramble resolves even when the next track carries an identical
-    // string (back-to-back songs by the same artist) — text alone wouldn't
-    // re-fire and the corrupted scramble would stay on screen forever.
-    if (displayRef.current === text) return;
-    const chars = text.split("");
-    const total = chars.length;
-    const step = Math.max(1, Math.ceil(total / 20));
-    let resolved = 0;
-    const id = setInterval(() => {
-      resolved += step;
-      if (resolved >= total) {
-        setDisplay(text);
-        clearInterval(id);
-        return;
-      }
-      setDisplay(
-        chars
-          .map((c, i) => (i < resolved || c === " " ? c : randChar()))
-          .join(""),
-      );
-    }, 33);
-    return () => clearInterval(id);
-  }, [text, phase]);
-
-  return (
-    <span className={className} style={style}>
-      {display}
-    </span>
-  );
-}
-
-// ── Small HUD widgets ───────────────────────────────────────────────
-
-/** Fluctuating uplink readout, pure set dressing */
-function LinkTicker({ color }: { color: string }) {
-  const [pct, setPct] = useState(98.2);
-  useEffect(() => {
-    const id = setInterval(() => setPct(96.8 + Math.random() * 3.1), 900);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <span style={{ color, fontFamily: MONO_FONT }}>
-      LINK::{pct.toFixed(1)}%
-    </span>
-  );
-}
-
-// Deterministic pseudo-random EQ bar loops (seeded by index so renders are stable)
-const EQ_BARS = Array.from({ length: 14 }, (_, i) => {
-  const seq = Array.from(
-    { length: 5 },
-    (_, k) => 0.15 + 0.85 * Math.abs(Math.sin(i * 2.7 + k * 1.9)),
-  );
-  return {
-    seq: [...seq, seq[0] ?? 0.15],
-    duration: 1.1 + ((i * 53) % 37) / 45,
-  };
-});
-
-const BARCODE_BARS = [2, 1, 3, 1, 1, 2, 4, 1, 2, 1, 1, 3, 2, 1, 2, 1, 3, 1];
 
 /** 4-hex-digit code derived from the track — changes with every song */
 function trackHex(title: string, artist: string): string {
@@ -191,17 +70,168 @@ function trackHex(title: string, artist: string): string {
   return (h >>> 0).toString(16).slice(0, 4).toUpperCase().padStart(4, "0");
 }
 
+// ── Typewriter text ─────────────────────────────────────────────────
+
+/**
+ * Types text in character-by-character behind a block caret, with a small
+ * matrix-style decode window at the typing edge — the next few characters
+ * cycle through random glyphs before settling into the real ones. Backspaces
+ * cleanly during the exit phase. Keyed on phase as well as text so the line
+ * retypes even when the next track carries an identical string (back-to-back
+ * songs by the same artist).
+ */
+function TypeReveal({
+  text,
+  phase,
+  delay = 0,
+  className,
+  style,
+  caret = true,
+  caretColor = "#f4f4f1",
+}: {
+  text: string;
+  phase: Phase;
+  delay?: number;
+  className?: string;
+  style?: React.CSSProperties;
+  caret?: boolean;
+  caretColor?: string;
+}) {
+  const [count, setCount] = useState(text.length);
+  const countRef = useRef(count);
+  countRef.current = count;
+
+  useEffect(() => {
+    // Exit: backspace the current line out
+    if (phase === "exit") {
+      const chunk = Math.max(1, Math.ceil(text.length / 12));
+      const id = setInterval(() => {
+        setCount((c) => Math.max(0, c - chunk));
+      }, 35);
+      return () => clearInterval(id);
+    }
+
+    // Enter/rest: type toward the full string after the stage delay
+    if (countRef.current >= text.length) {
+      setCount(text.length);
+      return;
+    }
+    const chunk = Math.max(1, Math.ceil(text.length / 28));
+    // Stage delay only applies during the choreographed enter; if typing is
+    // resumed at rest (e.g. after an interrupted transition) start right away.
+    const startDelay = phase === "enter" ? delay : 0;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const timeout = setTimeout(() => {
+      interval = setInterval(() => {
+        setCount((c) => {
+          const next = Math.min(text.length, c + chunk);
+          if (next >= text.length && interval) clearInterval(interval);
+          return next;
+        });
+      }, 65);
+    }, startDelay);
+    return () => {
+      clearTimeout(timeout);
+      if (interval) clearInterval(interval);
+    };
+  }, [text, phase, delay]);
+
+  // Rolling decode window: only while actively typing (count moving between
+  // 1 and full length, outside the exit teardown)
+  const shown = Math.min(count, text.length);
+  const scramble =
+    phase !== "exit" && shown > 0 && shown < text.length
+      ? text
+          .slice(shown, Math.min(shown + 3, text.length))
+          .split("")
+          .map((c) => (c === " " ? " " : cycleChar()))
+          .join("")
+      : "";
+
+  return (
+    <span className={className} style={style}>
+      {text.slice(0, shown)}
+      {scramble && <span style={{ opacity: 0.55 }}>{scramble}</span>}
+      {caret && (
+        <motion.span
+          className="ml-[3px] inline-block w-[0.45em]"
+          style={{ height: "0.9em", backgroundColor: caretColor }}
+          animate={{ opacity: [1, 1, 0, 0] }}
+          transition={{ duration: 1, repeat: Infinity, times: [0, 0.5, 0.5, 1] }}
+        />
+      )}
+    </span>
+  );
+}
+
+/** Index numeral that counts up to its value when the track changes */
+function CountUp({
+  value,
+  phase,
+  className,
+  style,
+}: {
+  value: number;
+  phase: Phase;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [shown, setShown] = useState(value);
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
+  const prevValue = useRef(value);
+
+  useEffect(() => {
+    if (phase === "exit") return;
+    // Count from zero for a new track, but resume mid-count if the phase
+    // merely changed (e.g. enter → rest) so the numeral never double-counts.
+    const fromScratch = prevValue.current !== value;
+    prevValue.current = value;
+    let current = fromScratch ? 0 : Math.min(shownRef.current, value);
+    if (current >= value) {
+      setShown(value);
+      return;
+    }
+    const step = Math.max(1, Math.ceil(value / 20));
+    const id = setInterval(() => {
+      current = Math.min(value, current + step);
+      setShown(current);
+      if (current >= value) clearInterval(id);
+    }, 50);
+    return () => clearInterval(id);
+  }, [value, phase]);
+
+  return (
+    <span className={className} style={style}>
+      {String(shown).padStart(3, "0")}
+    </span>
+  );
+}
+
+// Deterministic pseudo-random EQ bar loops (seeded by index so renders are stable)
+const EQ_BARS = Array.from({ length: 10 }, (_, i) => {
+  const seq = Array.from(
+    { length: 5 },
+    (_, k) => 0.2 + 0.8 * Math.abs(Math.sin(i * 2.7 + k * 1.9)),
+  );
+  return {
+    seq: [...seq, seq[0] ?? 0.2],
+    duration: 1.1 + ((i * 53) % 37) / 45,
+  };
+});
+
+const BARCODE_BARS = [2, 1, 3, 1, 1, 2, 4, 1, 2, 1, 1, 3, 2, 1, 2, 1, 3, 1];
+
 // ── Custom props interface (inner component) ────────────────────────
 
 interface CyberpunkThemeProps {
   showArtwork?: boolean;
-  showScanlines?: boolean;
-  showEqualizer?: boolean;
   showCallout?: boolean;
-  accentColor?: string;
-  secondaryColor?: string;
-  alertColor?: string;
-  textColor?: string;
+  showEqualizer?: boolean;
+  showHolo?: boolean;
+  panelColor?: string;
+  paperColor?: string;
+  screenColor?: string;
   fontFamily?: string;
   fontSize?: {
     title?: number;
@@ -209,7 +239,7 @@ interface CyberpunkThemeProps {
   };
 }
 
-// ── Inner component: animations + rendering ─────────────────────────
+// ── Inner component: staged assembly + rendering ────────────────────
 
 function CyberpunkTheme({
   title,
@@ -218,26 +248,25 @@ function CyberpunkTheme({
   artwork,
   isAnimating,
   showArtwork = true,
-  showScanlines = true,
-  showEqualizer = true,
   showCallout = true,
-  accentColor = "#00f0ff",
-  secondaryColor = "#fcee0a",
-  alertColor = "#ff003c",
-  textColor = "#eafcff",
-  fontFamily = "Rajdhani, 'Chakra Petch', 'Segoe UI', system-ui, sans-serif",
-  fontSize = { title: 40, artist: 24 },
+  showEqualizer = true,
+  showHolo = true,
+  panelColor = "#0b0b0d",
+  paperColor = "#f4f4f1",
+  screenColor = "#d9eaf7",
+  fontFamily = "Michroma, 'Space Mono', system-ui, sans-serif",
+  fontSize = { title: 26, artist: 15 },
 }: ThemeRenderProps & CyberpunkThemeProps) {
-  const artControls = useAnimation();
+  const traceControls = useAnimation();
+  const panelControls = useAnimation();
   const headerControls = useAnimation();
-  const titleControls = useAnimation();
-  const artistControls = useAnimation();
-  const dataControls = useAnimation();
-  const calloutControls = useAnimation();
-  const burstControls = useAnimation();
+  const artControls = useAnimation();
+  const bodyControls = useAnimation();
+  const footerControls = useAnimation();
 
   const [phase, setPhase] = useState<Phase>("rest");
   const hex = useMemo(() => trackHex(title, artist), [title, artist]);
+  const indexNo = useMemo(() => parseInt(hex, 16) % 1000, [hex]);
 
   // Load the HUD fonts once, shared by every instance of this theme
   useEffect(() => {
@@ -251,418 +280,443 @@ function CyberpunkTheme({
 
   useEffect(() => {
     if (!isAnimating) {
-      // Snap to resting position (initial load or animation complete)
+      // Snap to fully-assembled state (initial load or animation complete)
       setPhase("rest");
-      artControls.start(REST);
-      headerControls.start(REST);
-      titleControls.start(REST);
-      artistControls.start(REST);
-      dataControls.start({ opacity: 1, y: 0 });
-      calloutControls.start("in");
+      traceControls.start("in");
+      panelControls.set({ clipPath: "inset(0 0 0% 0)", opacity: 1 });
+      headerControls.set({ opacity: 1, x: 0 });
+      artControls.set({ clipPath: "inset(0 0% 0 0)", opacity: 1 });
+      bodyControls.set({ opacity: 1, y: 0 });
+      footerControls.set({ opacity: 1, y: 0 });
       return;
     }
 
     const runAnimation = async () => {
-      // Phase 1: Exit — corrupt the signal and glitch everything out
+      // Phase 1: Exit — tear the label down, quick mechanical reverse
       setPhase("exit");
-      burstControls.start("burst");
       await Promise.all([
-        artControls.start(glitchOut(0)),
-        headerControls.start(glitchOut(STAGGER)),
-        titleControls.start(glitchOut(STAGGER * 1.5)),
-        artistControls.start(glitchOut(STAGGER * 2)),
-        dataControls.start({
+        footerControls.start({
           opacity: 0,
-          y: 8,
+          y: 4,
           transition: { duration: 0.25, ease: "easeIn" },
         }),
-        calloutControls.start("out"),
+        bodyControls.start({
+          opacity: 0,
+          transition: { duration: 0.45, delay: 0.1, ease: "easeIn" },
+        }),
+        artControls.start({
+          clipPath: "inset(0 100% 0 0)",
+          transition: { duration: 0.35, delay: 0.1, ease: "easeIn" },
+        }),
+        headerControls.start({
+          opacity: 0,
+          x: -12,
+          transition: { duration: 0.3, delay: 0.25, ease: "easeIn" },
+        }),
+        panelControls.start({
+          clipPath: "inset(0 0 100% 0)",
+          transition: { duration: 0.4, delay: 0.45, ease: "easeIn" },
+        }),
+        traceControls.start("out"),
       ]);
 
-      // Phase 2: Enter — re-acquire, redraw the callout, decode new data
+      // Phase 2: Enter — assemble the new label in stages
       setPhase("enter");
-      burstControls.start("burst");
       await Promise.all([
-        artControls.start(glitchIn(0)),
-        headerControls.start(glitchIn(STAGGER)),
-        titleControls.start(glitchIn(STAGGER * 1.5)),
-        artistControls.start(glitchIn(STAGGER * 2)),
-        dataControls.start({
+        traceControls.start("in"),
+        panelControls.start({
+          clipPath: "inset(0 0 0% 0)",
+          transition: { duration: 0.5, delay: 0.2, ease: "easeOut" },
+        }),
+        headerControls.start({
+          opacity: 1,
+          x: 0,
+          transition: { duration: 0.35, delay: 0.55, ease: "easeOut" },
+        }),
+        artControls.start({
+          clipPath: "inset(0 0% 0 0)",
+          transition: { duration: 0.45, delay: 0.7, ease: "easeOut" },
+        }),
+        bodyControls.start({
           opacity: 1,
           y: 0,
-          transition: { duration: 0.3, delay: 0.25, ease: "easeOut" },
+          transition: { duration: 0.4, delay: 0.85, ease: "easeOut" },
         }),
-        calloutControls.start("in"),
+        footerControls.start({
+          opacity: 1,
+          y: 0,
+          transition: { duration: 0.4, delay: 1.3, ease: "easeOut" },
+        }),
       ]);
     };
 
     runAnimation();
   }, [
     isAnimating,
-    artControls,
+    traceControls,
+    panelControls,
     headerControls,
-    titleControls,
-    artistControls,
-    dataControls,
-    calloutControls,
-    burstControls,
+    artControls,
+    bodyControls,
+    footerControls,
   ]);
 
-  // Chromatic-aberration text shadow (red/cyan split)
-  const rgbSplit = {
-    textShadow: `2px 0 ${alpha(alertColor, "99")}, -2px 0 ${alpha(accentColor, "99")}`,
-  };
-
   const status =
-    phase === "exit"
-      ? { text: "://SIGNAL_LOST — REACQ...", color: alertColor }
-      : phase === "enter"
-        ? { text: `://DECRYPT — 0x${hex}`, color: secondaryColor }
-        : { text: "://SYNC_OK — STREAM.ACTIVE", color: alpha(accentColor, "aa") };
+    phase === "exit" ? "EJECT" : phase === "enter" ? "WRITE" : "SYNC:OK";
+
+  const holoStyle = {
+    backgroundImage: HOLO_GRADIENT,
+    backgroundSize: "300% 100%",
+  };
 
   return (
     <div
       className="relative inline-block max-w-full"
-      style={{ paddingTop: showCallout ? 44 : 0 }}
+      style={{ fontFamily, paddingTop: showCallout ? 40 : 0 }}
     >
-      {/* ── Leader-line callout (draws in above the panel) ── */}
+      {/* ── Connector trace: riser → 45° jog → run → node + tag ── */}
       {showCallout && (
-        <>
-          <div
-            className="pointer-events-none absolute right-10 top-[12px] z-30 flex w-[240px] items-center gap-2"
-            style={{ fontFamily: MONO_FONT }}
-          >
-            <motion.span
-              className="whitespace-nowrap text-[10px] uppercase"
-              style={{ color: alpha(textColor, "cc"), letterSpacing: "0.12em" }}
-              variants={{
-                in: { opacity: 1, transition: { delay: 0.38, duration: 0.15 } },
-                out: { opacity: 0, transition: { duration: 0.12 } },
-              }}
-              initial="in"
-              animate={calloutControls}
-            >
-              TRK_ID :: 0x{hex}
-            </motion.span>
-            <motion.span
-              className="relative h-[10px] w-[10px] flex-shrink-0 rounded-full border"
-              style={{ borderColor: accentColor }}
-              variants={{
-                in: {
-                  opacity: 1,
-                  scale: 1,
-                  transition: { delay: 0.3, duration: 0.15 },
-                },
-                out: { opacity: 0, scale: 0, transition: { duration: 0.12 } },
-              }}
-              initial="in"
-              animate={calloutControls}
-            >
-              <span
-                className="absolute left-1/2 top-1/2 h-[4px] w-[4px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-                style={{ backgroundColor: accentColor }}
-              />
-            </motion.span>
-            <motion.span
-              className="h-[2px] flex-1 origin-right"
-              style={{ backgroundColor: alpha(accentColor, "bb") }}
-              variants={{
-                in: {
-                  scaleX: 1,
-                  opacity: 1,
-                  transition: { delay: 0.14, duration: 0.18, ease: "easeOut" },
-                },
-                out: { scaleX: 0, opacity: 0, transition: { duration: 0.15 } },
-              }}
-              initial="in"
-              animate={calloutControls}
-            />
-          </div>
+        <div className="pointer-events-none absolute right-0 top-0 z-30 h-[40px] w-[240px]">
+          {/* Riser from the panel's stepped top edge */}
           <motion.span
-            className="pointer-events-none absolute right-10 top-[13px] z-30 w-[2px] origin-top"
-            style={{ height: 32, backgroundColor: alpha(accentColor, "bb") }}
+            className="absolute origin-bottom"
+            style={{
+              right: 112,
+              top: 25,
+              width: 2,
+              height: 28,
+              backgroundColor: alpha(paperColor, "b3"),
+            }}
             variants={{
-              in: {
-                scaleY: 1,
-                opacity: 1,
-                transition: { duration: 0.16, ease: "easeOut" },
-              },
-              out: { scaleY: 0, opacity: 0, transition: { duration: 0.15 } },
+              in: { scaleY: 1, opacity: 1, transition: { duration: 0.2 } },
+              out: { scaleY: 0, opacity: 0, transition: { duration: 0.25 } },
             }}
             initial="in"
-            animate={calloutControls}
+            animate={traceControls}
           />
-        </>
+          {/* 45° diagonal jog */}
+          <motion.span
+            className="absolute"
+            style={{
+              right: 98,
+              top: 10,
+              width: 22,
+              height: 2,
+              backgroundColor: alpha(paperColor, "b3"),
+              transformOrigin: "100% 50%",
+              rotate: 45,
+            }}
+            variants={{
+              in: {
+                scaleX: 1,
+                opacity: 1,
+                transition: { duration: 0.18, delay: 0.2 },
+              },
+              out: { scaleX: 0, opacity: 0, transition: { duration: 0.2 } },
+            }}
+            initial="in"
+            animate={traceControls}
+          />
+          {/* Horizontal run */}
+          <motion.span
+            className="absolute origin-left"
+            style={{
+              right: 20,
+              top: 9,
+              width: 78,
+              height: 2,
+              backgroundColor: alpha(paperColor, "b3"),
+            }}
+            variants={{
+              in: {
+                scaleX: 1,
+                opacity: 1,
+                transition: { duration: 0.25, delay: 0.38 },
+              },
+              out: { scaleX: 0, opacity: 0, transition: { duration: 0.2 } },
+            }}
+            initial="in"
+            animate={traceControls}
+          />
+          {/* Diamond node */}
+          <motion.span
+            className="absolute"
+            style={{
+              right: 8,
+              top: 5,
+              width: 9,
+              height: 9,
+              rotate: 45,
+              ...(showHolo
+                ? holoStyle
+                : { backgroundColor: paperColor }),
+            }}
+            variants={{
+              in: { scale: 1, opacity: 1, transition: { duration: 0.2, delay: 0.63 } },
+              out: { scale: 0, opacity: 0, transition: { duration: 0.15 } },
+            }}
+            initial="in"
+            animate={traceControls}
+          />
+          {/* Version tag */}
+          <motion.span
+            className="absolute whitespace-nowrap text-[9px]"
+            style={{
+              right: 24,
+              top: 16,
+              color: alpha(paperColor, "99"),
+              fontFamily: MONO_FONT,
+              letterSpacing: "0.14em",
+            }}
+            variants={{
+              in: { opacity: 1, transition: { duration: 0.25, delay: 0.75 } },
+              out: { opacity: 0, transition: { duration: 0.15 } },
+            }}
+            initial="in"
+            animate={traceControls}
+          >
+            VER 127.129 // 0x{hex}
+          </motion.span>
+        </div>
       )}
 
-      {/* ── Main HUD panel ── */}
-      <div
-        className="relative flex min-w-[560px] max-w-full items-stretch gap-4 p-4 pr-6"
-        style={{
-          fontFamily,
-          color: textColor,
-          backgroundColor: "rgba(5, 11, 16, 0.85)",
-          clipPath: PANEL_CLIP,
-          border: `1px solid ${alpha(accentColor, "55")}`,
-          boxShadow: `inset 0 0 24px ${alpha(accentColor, "22")}`,
-        }}
+      {/* ── Panel reveal wrapper (wipes down on enter, folds up on exit) ── */}
+      <motion.div
+        animate={panelControls}
+        initial={{ clipPath: "inset(0 0 0% 0)", opacity: 1 }}
       >
-        {/* Static scanline texture */}
-        {showScanlines && (
+        {/* Die-cut label silhouette */}
+        <div
+          className="relative flex min-w-[560px] max-w-full flex-col"
+          style={{
+            backgroundColor: panelColor,
+            color: paperColor,
+            clipPath: PANEL_CLIP,
+          }}
+        >
+          {/* Holo foil sliver along the left edge */}
+          {showHolo && (
+            <motion.div
+              className="pointer-events-none absolute bottom-[8px] left-0 z-10 w-[5px]"
+              style={{ top: 16, ...holoStyle }}
+              animate={{ backgroundPosition: ["0% 0%", "300% 0%"] }}
+              transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
+            />
+          )}
+
+          {/* Decorative dot grid */}
           <div
-            className="pointer-events-none absolute inset-0 z-20"
+            className="pointer-events-none absolute right-[120px] top-[52px] z-10 h-[14px] w-[38px]"
             style={{
-              background:
-                "repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0px, rgba(0,0,0,0.25) 1px, transparent 1px, transparent 3px)",
+              backgroundImage: `radial-gradient(circle, ${alpha(paperColor, "4d")} 1px, transparent 1px)`,
+              backgroundSize: "8px 7px",
             }}
           />
-        )}
 
-        {/* Sweeping scan band */}
-        {showScanlines && (
-          <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-            <motion.div
-              className="absolute inset-x-0 h-10"
-              style={{
-                background: `linear-gradient(180deg, transparent, ${alpha(accentColor, "14")}, transparent)`,
-              }}
-              initial={{ y: -48 }}
-              animate={{ y: [-48, 320] }}
-              transition={{ duration: 3.4, repeat: Infinity, ease: "linear" }}
-            />
-          </div>
-        )}
+          {/* Vertical spec text along the right edge */}
+          <span
+            className="pointer-events-none absolute right-[6px] top-[54px] z-10 select-none text-[8px] uppercase"
+            style={{
+              color: alpha(paperColor, "59"),
+              writingMode: "vertical-rl",
+              letterSpacing: "0.38em",
+              fontFamily: MONO_FONT,
+            }}
+          >
+            CYBERPUNK.SYS
+          </span>
 
-        {/* Ambient interference flicker */}
-        <motion.div
-          className="pointer-events-none absolute inset-0 z-30"
-          style={{
-            background: `linear-gradient(90deg, ${alpha(alertColor, "22")}, transparent 30%, transparent 70%, ${alpha(accentColor, "22")})`,
-            mixBlendMode: "screen",
-          }}
-          animate={{ opacity: [0, 0, 0.5, 0, 0, 0, 0.3, 0, 0] }}
-          transition={{
-            duration: 6.5,
-            repeat: Infinity,
-            times: [0, 0.42, 0.44, 0.46, 0.66, 0.78, 0.8, 0.82, 1],
-          }}
-        />
-
-        {/* Transition glitch-slice burst */}
-        <motion.div
-          className="pointer-events-none absolute inset-0 z-40"
-          style={{ backgroundColor: accentColor, mixBlendMode: "screen" }}
-          initial={{ opacity: 0 }}
-          variants={{
-            burst: {
-              opacity: [0, 0.45, 0.1, 0.3, 0],
-              clipPath: [
-                "inset(20% 0 60% 0)",
-                "inset(65% 0 20% 0)",
-                "inset(35% 0 45% 0)",
-                "inset(78% 0 8% 0)",
-                "inset(20% 0 60% 0)",
-              ],
-              transition: { duration: 0.32, ease: "linear" },
-            },
-          }}
-          animate={burstControls}
-        />
-
-        {/* Corner brackets */}
-        <div
-          className="pointer-events-none absolute left-0 top-0 z-10 h-4 w-4 border-l-2 border-t-2"
-          style={{ borderColor: accentColor }}
-        />
-        <div
-          className="pointer-events-none absolute bottom-0 right-0 z-10 h-4 w-4 border-b-2 border-r-2"
-          style={{ borderColor: accentColor }}
-        />
-
-        {/* Top edge accent line (blinks like a status LED) */}
-        <motion.div
-          className="pointer-events-none absolute left-4 top-0 z-10 h-[2px]"
-          style={{ backgroundColor: secondaryColor, width: 90 }}
-          animate={{ opacity: [1, 1, 0.25, 1], scaleX: [1, 1, 0.96, 1] }}
-          transition={{ duration: 2.4, repeat: Infinity, times: [0, 0.86, 0.92, 1] }}
-        />
-
-        {/* Left edge power rail */}
-        <div
-          className="pointer-events-none absolute bottom-6 left-0 top-6 z-10 w-[3px]"
-          style={{
-            background: `linear-gradient(180deg, ${accentColor}, ${alpha(accentColor, "11")})`,
-          }}
-        />
-
-        {/* Bottom hazard stripe */}
-        <div
-          className="pointer-events-none absolute bottom-0 left-6 z-10 h-[5px] w-[110px]"
-          style={{
-            background: `repeating-linear-gradient(45deg, ${secondaryColor} 0px, ${secondaryColor} 5px, #0a0a08 5px, #0a0a08 10px)`,
-          }}
-        />
-
-        {/* Album artwork in a targeting frame */}
-        {showArtwork && (
+          {/* ── Header bar: paper slab + slanted divider + metadata zone ── */}
           <motion.div
-            className="relative z-10 flex-shrink-0 self-center"
-            animate={artControls}
-            initial={REST}
+            className="relative z-10 flex h-[34px] items-stretch"
+            animate={headerControls}
+            initial={{ opacity: 1, x: 0 }}
           >
             <div
-              className="p-[3px]"
-              style={{ clipPath: ART_CLIP, backgroundColor: alpha(accentColor, "66") }}
+              className="flex w-[60%] items-center gap-2 pl-6"
+              style={{ backgroundColor: paperColor, clipPath: SLAB_CLIP }}
             >
-              <div className="relative overflow-hidden" style={{ clipPath: ART_CLIP }}>
-                <AlbumArt src={artwork} size="xl" className="!rounded-none" />
-                {/* Vertical scan sweep across the art */}
-                <motion.div
-                  className="pointer-events-none absolute inset-y-0 w-[26px]"
+              {/* Play glyph */}
+              <span
+                className="inline-block h-0 w-0"
+                style={{
+                  borderTop: "5px solid transparent",
+                  borderBottom: "5px solid transparent",
+                  borderLeft: `8px solid ${panelColor}`,
+                }}
+              />
+              <span
+                className="text-[11px] font-bold uppercase"
+                style={{ color: panelColor, letterSpacing: "0.32em" }}
+              >
+                Now_Playing
+              </span>
+            </div>
+            <div
+              className="flex flex-1 items-center justify-end gap-3 pr-12 pt-[12px] text-[9px] uppercase"
+              style={{ color: alpha(paperColor, "99"), fontFamily: MONO_FONT }}
+            >
+              <span>{status}</span>
+              <span style={{ color: alpha(paperColor, "4d") }}>⏐</span>
+              <span>ID:NP3-{hex}</span>
+            </div>
+          </motion.div>
+
+          {/* ── Main row ── */}
+          <div className="relative z-10 flex items-center gap-5 px-6 py-4">
+            {/* LCD artwork window */}
+            {showArtwork && (
+              <motion.div
+                className="flex-shrink-0"
+                animate={artControls}
+                initial={{ clipPath: "inset(0 0% 0 0)", opacity: 1 }}
+              >
+                <div
+                  className="p-[6px] pb-[3px]"
                   style={{
-                    background: `linear-gradient(90deg, transparent, ${alpha(accentColor, "55")}, transparent)`,
-                    mixBlendMode: "screen",
+                    backgroundColor: screenColor,
+                    clipPath: CHIP_CLIP,
                   }}
-                  initial={{ x: -30 }}
-                  animate={{ x: [-30, 180] }}
-                  transition={{ duration: 2.6, repeat: Infinity, ease: "linear" }}
+                >
+                  <AlbumArt src={artwork} size="xl" className="!rounded-none" />
+                  <div
+                    className="flex items-center justify-between pt-[3px] text-[8px] uppercase"
+                    style={{ color: "#33506b", fontFamily: MONO_FONT }}
+                  >
+                    <span>IMG.SRC</span>
+                    <span className="flex h-[7px] items-stretch gap-[1px]">
+                      {BARCODE_BARS.slice(0, 10).map((w, i) => (
+                        <span
+                          key={i}
+                          style={{ width: w, backgroundColor: "#33506b" }}
+                        />
+                      ))}
+                    </span>
+                    <span>600×600</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Title / artist block */}
+            <motion.div
+              className="flex min-w-0 flex-1 flex-col gap-[7px]"
+              animate={bodyControls}
+              initial={{ opacity: 1, y: 0 }}
+            >
+              <div
+                className="truncate uppercase leading-tight"
+                style={{
+                  fontSize: `${fontSize.title ?? 26}px`,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                <TypeReveal
+                  text={title}
+                  phase={phase}
+                  delay={850}
+                  caretColor={paperColor}
                 />
               </div>
-            </div>
-            {/* Targeting brackets around the frame */}
-            <div
-              className="pointer-events-none absolute -left-1 -top-1 h-3 w-3 border-l-2 border-t-2"
-              style={{ borderColor: secondaryColor }}
-            />
-            <div
-              className="pointer-events-none absolute -right-1 -top-1 h-3 w-3 border-r-2 border-t-2"
-              style={{ borderColor: secondaryColor }}
-            />
-            <div
-              className="pointer-events-none absolute -bottom-1 -left-1 h-3 w-3 border-b-2 border-l-2"
-              style={{ borderColor: secondaryColor }}
-            />
-            <div
-              className="pointer-events-none absolute -bottom-1 -right-1 h-3 w-3 border-b-2 border-r-2"
-              style={{ borderColor: secondaryColor }}
-            />
-            {/* Art readout tag */}
-            <div
-              className="absolute bottom-1 left-1 px-1.5 text-[10px] font-bold uppercase tracking-widest"
-              style={{
-                backgroundColor: alertColor,
-                color: "#0a0208",
-                fontFamily: MONO_FONT,
-              }}
-            >
-              IMG_SRC
-            </div>
-          </motion.div>
-        )}
-
-        {/* Text block */}
-        <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center gap-1">
-          {/* Status header row */}
-          <motion.div
-            className="flex items-center gap-2"
-            animate={headerControls}
-            initial={REST}
-          >
-            <motion.span
-              className="inline-block h-2 w-2 flex-shrink-0"
-              style={{ backgroundColor: alertColor }}
-              animate={{ opacity: [1, 1, 0.15, 1] }}
-              transition={{ duration: 1.1, repeat: Infinity, times: [0, 0.7, 0.85, 1] }}
-            />
-            <span
-              className="text-xs font-bold uppercase"
-              style={{ color: secondaryColor, letterSpacing: "0.35em" }}
-            >
-              Now Playing
-            </span>
-            <span
-              className="truncate text-[11px] uppercase"
-              style={{ color: status.color, fontFamily: MONO_FONT }}
-            >
-              {status.text}
-            </span>
-            <span
-              className="ml-auto hidden flex-shrink-0 border px-1.5 py-px text-[10px] sm:inline"
-              style={{
-                color: alpha(textColor, "88"),
-                borderColor: alpha(accentColor, "44"),
-                fontFamily: MONO_FONT,
-              }}
-            >
-              ID 0x{hex}
-            </span>
-          </motion.div>
-
-          {/* Track title — decode-scramble terminal text */}
-          <motion.div
-            className="truncate font-bold uppercase leading-none"
-            style={{
-              fontSize: `${fontSize.title ?? 40}px`,
-              letterSpacing: "0.02em",
-              color: textColor,
-              ...rgbSplit,
-            }}
-            animate={titleControls}
-            initial={REST}
-          >
-            <DecodeText text={title} phase={phase} />
-          </motion.div>
-
-          {/* Artist row */}
-          <motion.div
-            className="flex items-center gap-2"
-            animate={artistControls}
-            initial={REST}
-          >
-            <span
-              className="inline-block h-[2px] w-6 flex-shrink-0"
-              style={{ backgroundColor: secondaryColor }}
-            />
-            <span
-              className="truncate font-medium uppercase"
-              style={{
-                fontSize: `${fontSize.artist ?? 24}px`,
-                lineHeight: 1.1,
-                color: accentColor,
-                letterSpacing: "0.12em",
-                fontFamily: "'Chakra Petch', Rajdhani, system-ui, sans-serif",
-              }}
-            >
-              <DecodeText text={artist} phase={phase} />
-            </span>
-            {label && (
-              <span
-                className="hidden flex-shrink-0 text-xs uppercase tracking-widest sm:inline"
-                style={{ color: alpha(textColor, "66"), fontFamily: MONO_FONT }}
+              <div
+                className="h-px w-full"
+                style={{ backgroundColor: alpha(paperColor, "33") }}
+              />
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  className="h-[2px] w-5 flex-shrink-0"
+                  style={{ backgroundColor: alpha(paperColor, "80") }}
+                />
+                <span
+                  className="truncate font-bold uppercase"
+                  style={{
+                    fontSize: `${fontSize.artist ?? 15}px`,
+                    letterSpacing: "0.2em",
+                    fontFamily: MONO_FONT,
+                  }}
+                >
+                  <TypeReveal
+                    text={artist}
+                    phase={phase}
+                    delay={1050}
+                    caretColor={paperColor}
+                  />
+                </span>
+                {label && (
+                  <span
+                    className="hidden flex-shrink-0 px-[6px] py-[2px] text-[9px] font-bold uppercase sm:inline"
+                    style={{
+                      backgroundColor: paperColor,
+                      color: panelColor,
+                      clipPath: CHIP_CLIP,
+                      fontFamily: MONO_FONT,
+                      letterSpacing: "0.1em",
+                    }}
+                  >
+                    {label}
+                  </span>
+                )}
+              </div>
+              <div
+                className="flex items-center gap-3 text-[9px] uppercase"
+                style={{ color: alpha(paperColor, "66"), fontFamily: MONO_FONT }}
               >
-                [{label}]
-              </span>
-            )}
-          </motion.div>
+                <span>RSD-2077.270-Y</span>
+                <span>✳</span>
+                <span>⊠</span>
+                <span>AUDIO.FEED — 44.1KHZ</span>
+              </div>
+            </motion.div>
 
-          {/* Data strip: EQ + telemetry readouts */}
+            {/* Index numeral block */}
+            <motion.div
+              className="ml-6 hidden w-[86px] flex-shrink-0 flex-col items-end gap-1 self-center pr-6 md:flex"
+              animate={footerControls}
+              initial={{ opacity: 1, y: 0 }}
+            >
+              <span
+                className="text-[8px] uppercase"
+                style={{
+                  color: alpha(paperColor, "66"),
+                  fontFamily: MONO_FONT,
+                  letterSpacing: "0.28em",
+                }}
+              >
+                TRK.NO
+              </span>
+              <CountUp
+                value={indexNo}
+                phase={phase}
+                className="leading-none"
+                style={{ fontSize: 30 }}
+              />
+              <span
+                className="text-[10px]"
+                style={{ color: alpha(paperColor, "59") }}
+              >
+                ✳ ⊘ ⊠
+              </span>
+            </motion.div>
+          </div>
+
+          {/* ── Footer strip: rule, meter, barcode, spec text ── */}
           <motion.div
-            className="mt-1.5 flex items-center gap-3 text-[10px] uppercase"
-            style={{ fontFamily: MONO_FONT }}
-            animate={dataControls}
+            className="relative z-10 mx-6 mb-[14px] flex items-center gap-4 border-t pt-[7px] text-[9px] uppercase"
+            style={{
+              borderColor: alpha(paperColor, "33"),
+              color: alpha(paperColor, "80"),
+              fontFamily: MONO_FONT,
+            }}
+            animate={footerControls}
             initial={{ opacity: 1, y: 0 }}
           >
             {showEqualizer && (
-              <div className="flex h-[16px] items-end gap-[2px]">
+              <span className="flex h-[12px] items-end gap-[2px]">
                 {EQ_BARS.map((bar, i) => (
                   <motion.span
                     key={i}
-                    className="w-[3px] origin-bottom"
-                    style={{
-                      height: "100%",
-                      backgroundColor: i % 5 === 3 ? secondaryColor : accentColor,
-                      opacity: 0.85,
-                    }}
+                    className="w-[2px] origin-bottom"
+                    style={{ height: "100%", backgroundColor: alpha(paperColor, "cc") }}
                     animate={{ scaleY: bar.seq }}
                     transition={{
                       duration: bar.duration,
@@ -671,76 +725,29 @@ function CyberpunkTheme({
                     }}
                   />
                 ))}
-              </div>
+              </span>
             )}
-            <span
-              className="h-3 w-px flex-shrink-0"
-              style={{ backgroundColor: alpha(textColor, "33") }}
-            />
-            <span style={{ color: alpha(textColor, "77") }}>CH_02 // 44.1kHz</span>
-            <LinkTicker color={alpha(accentColor, "aa")} />
-            <span className="flex items-center gap-[2px]">
-              {[0, 1, 2].map((i) => (
-                <motion.span
+            <span className="flex h-[12px] items-stretch gap-[1px]">
+              {BARCODE_BARS.map((w, i) => (
+                <span
                   key={i}
-                  style={{ color: alertColor, lineHeight: 1 }}
-                  animate={{ opacity: [0.15, 1, 0.15] }}
-                  transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }}
-                >
-                  ▸
-                </motion.span>
+                  style={{ width: w, backgroundColor: alpha(paperColor, "99") }}
+                />
               ))}
             </span>
+            <span>NKD 37T4-T</span>
+            {showHolo && (
+              <motion.span
+                className="h-[10px] w-[26px]"
+                style={holoStyle}
+                animate={{ backgroundPosition: ["0% 0%", "300% 0%"] }}
+                transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
+              />
+            )}
+            <span className="ml-auto pr-6">01/09/2077</span>
           </motion.div>
         </div>
-
-        {/* Right rail: reticle, katakana, barcode */}
-        <div className="relative z-10 hidden w-12 flex-shrink-0 flex-col items-center justify-between py-1 md:flex">
-          {/* Rotating targeting reticle */}
-          <div className="relative h-8 w-8">
-            <motion.span
-              className="absolute inset-0 rounded-full border border-dashed"
-              style={{ borderColor: alpha(accentColor, "88") }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-            />
-            <motion.span
-              className="absolute inset-[5px] rounded-full border"
-              style={{
-                borderColor: alpha(secondaryColor, "aa"),
-                borderTopColor: "transparent",
-              }}
-              animate={{ rotate: -360 }}
-              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-            />
-            <span
-              className="absolute left-1/2 top-1/2 h-[3px] w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-              style={{ backgroundColor: accentColor }}
-            />
-          </div>
-          {/* Vertical katakana strip */}
-          <span
-            className="select-none text-[9px] uppercase"
-            style={{
-              color: alpha(textColor, "55"),
-              writingMode: "vertical-rl",
-              letterSpacing: "0.3em",
-              fontFamily: MONO_FONT,
-            }}
-          >
-            サイバーパンク
-          </span>
-          {/* Barcode */}
-          <div className="flex h-[14px] items-stretch gap-[1px]">
-            {BARCODE_BARS.map((w, i) => (
-              <span
-                key={i}
-                style={{ width: w, backgroundColor: alpha(textColor, "66") }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -750,13 +757,12 @@ function CyberpunkTheme({
 interface CyberpunkProps {
   track: EnrichedTrack | null;
   showArtwork?: boolean;
-  showScanlines?: boolean;
-  showEqualizer?: boolean;
   showCallout?: boolean;
-  accentColor?: string;
-  secondaryColor?: string;
-  alertColor?: string;
-  textColor?: string;
+  showEqualizer?: boolean;
+  showHolo?: boolean;
+  panelColor?: string;
+  paperColor?: string;
+  screenColor?: string;
   fontFamily?: string;
   fontSize?: {
     title?: number;
@@ -769,13 +775,12 @@ interface CyberpunkProps {
 export function Cyberpunk({
   track,
   showArtwork,
-  showScanlines,
-  showEqualizer,
   showCallout,
-  accentColor,
-  secondaryColor,
-  alertColor,
-  textColor,
+  showEqualizer,
+  showHolo,
+  panelColor,
+  paperColor,
+  screenColor,
   fontFamily,
   fontSize,
 }: CyberpunkProps) {
@@ -787,13 +792,12 @@ export function Cyberpunk({
         <CyberpunkTheme
           {...props}
           showArtwork={showArtwork}
-          showScanlines={showScanlines}
-          showEqualizer={showEqualizer}
           showCallout={showCallout}
-          accentColor={accentColor}
-          secondaryColor={secondaryColor}
-          alertColor={alertColor}
-          textColor={textColor}
+          showEqualizer={showEqualizer}
+          showHolo={showHolo}
+          panelColor={panelColor}
+          paperColor={paperColor}
+          screenColor={screenColor}
           fontFamily={fontFamily}
           fontSize={fontSize}
         />

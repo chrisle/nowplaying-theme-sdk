@@ -81,6 +81,11 @@ async function runVite() {
   await execFileAsync("npx", ["vite", "build", "--config", VITE_CONFIG], {
     cwd: ROOT,
     maxBuffer: 16 * 1024 * 1024,
+    // Pin production explicitly. Vite reads NODE_ENV to decide, and a build
+    // started from the dev server (the download button) would otherwise
+    // inherit `development` and compile JSX against React's dev runtime —
+    // which the bundle, built for production React, cannot call.
+    env: { ...process.env, NODE_ENV: "production" },
   });
 }
 

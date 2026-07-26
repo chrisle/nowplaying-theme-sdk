@@ -2,14 +2,47 @@
 
 Use this as the structural template when creating `src/themes/<kebab-name>.tsx`.
 
-Adapt the animations, layout, and styles to match the user's requested visual design. This template shows the required structure — not the exact animations to use.
+Adapt the animations, layout, and styles to match the user's requested visual
+design. This template shows the required structure — not the exact animations to
+use.
 
 ```tsx
 import { EnrichedTrack } from "../types";
 import { motion, useAnimation } from "framer-motion";
 import { useEffect } from "react";
 import { BaseOverlay, ThemeRenderProps } from "../components/base-overlay";
+import type { ThemeMeta } from "../theme";
 // Optional: import { AlbumArt } from "../components/album-art";
+
+// ── Theme metadata: the only registration a theme needs ─────────────
+
+export const meta: ThemeMeta = {
+  id: "__kebab-name__",
+  name: "__Display Name__",
+  description: "__A short tagline shown in the theme picker__",
+  width: 1280,
+  height: 200,
+  fields: [
+    {
+      key: "accentColor",
+      label: "Accent Color",
+      type: "color",
+      defaultValue: "#ff0000",
+    },
+    {
+      key: "textColor",
+      label: "Text Color",
+      type: "color",
+      defaultValue: "#ffffff",
+    },
+    {
+      key: "fontFamily",
+      label: "Font Family",
+      type: "string",
+      defaultValue: "system-ui, sans-serif",
+    },
+  ],
+};
 
 // ── Animation config ────────────────────────────────────────────────
 
@@ -118,7 +151,7 @@ interface __Name__Props {
 
 // ── Outer component: BaseOverlay wrapper ────────────────────────────
 
-export function __Name__({
+export default function __Name__({
   track,
   accentColor,
   textColor,
@@ -129,8 +162,8 @@ export function __Name__({
       track={track}
       animationTiming={{
         // Must account for animation duration + any stagger delays
-        exitDuration: (EXIT_DURATION + 0.1) * 1000,   // seconds → ms
-        enterDuration: (ENTER_DURATION + 0.1) * 1000,  // seconds → ms
+        exitDuration: (EXIT_DURATION + 0.1) * 1000, // seconds → ms
+        enterDuration: (ENTER_DURATION + 0.1) * 1000, // seconds → ms
       }}
       renderTheme={(props) => (
         <__Name__Theme
@@ -147,8 +180,15 @@ export function __Name__({
 
 ## Template Notes
 
-- Replace all `__Name__` placeholders with the actual theme name (PascalCase)
-- The animation style shown (opacity + y translate) is just an example — adapt to the theme's concept
-- `animationTiming` values must be in **milliseconds** and should cover the full duration including any stagger delays
-- Add more `useAnimation()` controllers as needed for additional animated elements
-- Include all custom props in both the inner interface, outer interface, outer component signature, and the `renderTheme` pass-through
+- Replace all `__Name__` placeholders with the actual theme name (PascalCase),
+  and `__kebab-name__` / `__Display Name__` in `meta`
+- `meta` and the default export are what discovery looks for — a file missing
+  either is skipped by the playground and rejected by the build
+- The animation style shown (opacity + y translate) is just an example — adapt
+  to the theme's concept
+- `animationTiming` values must be in **milliseconds** and should cover the full
+  duration including any stagger delays
+- Add more `useAnimation()` controllers as needed for additional animated
+  elements
+- Include all custom props in both the inner interface, outer interface, outer
+  component signature, and the `renderTheme` pass-through

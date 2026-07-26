@@ -1,6 +1,8 @@
 ---
 name: create-theme
-description: Create a new Now Playing overlay theme. Use when asked to create, scaffold, or add a new theme to the theme SDK.
+description:
+  Create a new Now Playing overlay theme. Use when asked to create, scaffold, or
+  add a new theme to the theme SDK.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
@@ -10,11 +12,22 @@ Scaffold a complete overlay theme for the Now Playing theme SDK.
 
 ## Architecture Overview
 
-Each theme consists of two components in a single file:
+A theme is **one self-contained file** in `src/themes/`. There is no
+registration step: the playground and the `.np3theme` build both discover themes
+by scanning that folder, and everything they need to know comes from the file's
+own `meta` export. Never edit `src/App.tsx`, `src/registry.ts`, or
+`bundle.config.json` to add a theme — those belong to the SDK and are replaced
+by `npm run upgrade`.
 
-1. **Inner component** (e.g. `NeonTheme`) — handles animations and rendering. Receives `ThemeRenderProps & CustomProps`. Uses Framer Motion `useAnimation()` to animate elements on track changes.
+Each theme file contains a `meta` export plus two components:
 
-2. **Outer component** (e.g. `Neon`) — the public export. Receives `{ track, ...customProps }`. Wraps the inner component with `BaseOverlay` which manages the track change lifecycle.
+1. **Inner component** (e.g. `NeonTheme`) — handles animations and rendering.
+   Receives `ThemeRenderProps & CustomProps`. Uses Framer Motion
+   `useAnimation()` to animate elements on track changes.
+
+2. **Outer component** (e.g. `Neon`) — the public export. Receives
+   `{ track, ...customProps }`. Wraps the inner component with `BaseOverlay`
+   which manages the track change lifecycle.
 
 ### Animation Lifecycle
 
@@ -27,6 +40,7 @@ Each theme consists of two components in a single file:
 5. After `enterDuration` ms, `isAnimating` set to `false`
 
 The inner component's `useEffect` watches `isAnimating`:
+
 - When `isAnimating` becomes `true` → run exit then enter sequence
 - When `isAnimating` becomes `false` → snap elements to resting position
 
@@ -35,15 +49,21 @@ The inner component's `useEffect` watches `isAnimating`:
 ### Step 1: Get Theme Details
 
 Ask the user for:
+
 - **Theme name** (e.g. "Neon", "Minimal", "Retro")
 - **Brief description** of the visual style or animation concept
 - **Custom properties** they want exposed (colors, sizes, toggles, etc.)
 
 ### Step 2: Create the Theme File
 
-Create `src/themes/<kebab-name>.tsx` using the template in [template.md](template.md).
+Create `src/themes/<kebab-name>.tsx` using the template in
+[template.md](template.md).
 
 Key points:
+
+- Export `const meta: ThemeMeta` (imported from `../theme`) with `id`, `name`,
+  `description`, `width`, `height`, and the `fields` the playground should show
+- Export the outer component as `export default`
 - Import `EnrichedTrack` from `../types`
 - Import `motion, useAnimation` from `framer-motion`
 - Import `useEffect` from `react`
@@ -51,54 +71,62 @@ Key points:
 - Optionally import `AlbumArt` from `../components/album-art`
 - Inner component signature: `ThemeRenderProps & <Name>ThemeProps`
 - Outer component signature: `{ track: EnrichedTrack | null; ...customProps }`
-- Set `animationTiming` on BaseOverlay to match the theme's actual animation durations (exit + enter + any stagger delays, in milliseconds)
+- Set `animationTiming` on BaseOverlay to match the theme's actual animation
+  durations (exit + enter + any stagger delays, in milliseconds)
 
-### Step 3: Register in App.tsx
+### Step 3: Declare the theme's metadata
 
-Edit `src/App.tsx`:
+All of it lives in the theme file itself — nothing else needs editing:
 
-1. **Add import** at the top with other theme imports:
-   ```typescript
-   import { ThemeName } from "./themes/<kebab-name>";
-   ```
+```typescript
+import type { ThemeMeta } from "../theme";
 
-2. **Add to THEMES array** (around line 87):
-   ```typescript
-   { id: "<kebab-name>", name: "<Display Name>", Component: ThemeName },
-   ```
+export const meta: ThemeMeta = {
+  id: "<kebab-name>", // lowercase alphanumeric with - or _, must be unique
+  name: "<Display Name>", // shown in the playground and the NP theme picker
+  description: "<tagline>",
+  width: 1280,
+  height: 200,
+  fields: [
+    {
+      key: "propName",
+      label: "Display Label",
+      type: "color",
+      defaultValue: "#ff0000",
+    },
+    // ... more fields
+  ],
+};
+```
 
-3. **Add to THEME_FIELDS** (around line 21) with customization field definitions:
-   ```typescript
-   "<kebab-name>": [
-     { key: "propName", label: "Display Label", type: "color", defaultValue: "#ff0000" },
-     // ... more fields
-   ],
-   ```
+The `fields` become the playground's sidebar controls and are passed to the
+component as props. Available field types:
 
-   Available field types:
-   - `"color"` — hex color picker, defaultValue is a hex string
-   - `"boolean"` — checkbox toggle, defaultValue is true/false
-   - `"number"` — numeric input, defaultValue is a number; supports min, max, step
-   - `"string"` — text input, defaultValue is a string
-   - `"range"` — slider input, defaultValue is a number; requires min, max, step
+- `"color"` — hex color picker, defaultValue is a hex string
+- `"boolean"` — checkbox toggle, defaultValue is true/false
+- `"number"` — numeric input, defaultValue is a number; supports min, max, step
+- `"string"` — text input, defaultValue is a string
+- `"range"` — slider input, defaultValue is a number; requires min, max, step
 
-   For nested props (e.g. `fontSize.title`), use dot notation in the key. These are automatically resolved into nested objects by the playground.
+For nested props (e.g. `fontSize.title`), use dot notation in the key. These are
+automatically resolved into nested objects by the playground.
 
 ### Step 4: Verify
 
-- Confirm the theme file exports the outer component
-- Confirm App.tsx imports and registers both the component and its fields
+- Confirm the file exports both `meta` and a default component
+- Confirm `meta.id` is unique across `src/themes/`
 - Confirm `animationTiming` values match the actual animation durations
+- Run `npm run typecheck`; `npm run build` packages every theme in `src/themes/`
 
 ## Reference Files
 
-| File | Purpose |
-|------|---------|
-| `src/components/base-overlay.tsx` | BaseOverlay wrapper and ThemeRenderProps interface |
-| `src/types.ts` | EnrichedTrack type definition |
-| `src/themes/clean.tsx` | Canonical theme example (simplest pattern) |
-| `src/App.tsx` | THEMES registry and THEME_FIELDS customization |
-| `src/components/album-art.tsx` | Optional AlbumArt component (sizes: sm, md, lg, xl) |
+| File                              | Purpose                                                             |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `src/components/base-overlay.tsx` | BaseOverlay wrapper and ThemeRenderProps interface                  |
+| `src/types.ts`                    | EnrichedTrack type definition                                       |
+| `src/examples/clean.tsx`          | Canonical theme example (simplest pattern) — copy it, never edit it |
+| `src/theme.ts`                    | ThemeMeta / ThemeField / ThemeProps contract                        |
+| `src/components/album-art.tsx`    | Optional AlbumArt component (sizes: sm, md, lg, xl)                 |
 
 ## ThemeRenderProps
 
@@ -116,6 +144,9 @@ interface ThemeRenderProps {
 
 - Use Tailwind CSS for styling (already configured in the SDK)
 - Use Framer Motion for all animations (already a dependency)
-- The `isAnimating` flag drives the entire animation — do not use separate timers
-- Keep animations performant (prefer transform/opacity over layout-triggering properties)
-- The outer component must pass all custom props through to the inner component via `renderTheme`
+- The `isAnimating` flag drives the entire animation — do not use separate
+  timers
+- Keep animations performant (prefer transform/opacity over layout-triggering
+  properties)
+- The outer component must pass all custom props through to the inner component
+  via `renderTheme`

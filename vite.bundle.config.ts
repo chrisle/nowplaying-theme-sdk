@@ -12,6 +12,13 @@ import { resolve } from "path";
  */
 export default defineConfig({
   plugins: [react()],
+  // Library mode leaves `process.env.NODE_ENV` in the output for the consuming
+  // bundler to resolve — but a theme runs straight in the browser, where
+  // `process` doesn't exist and the first reference throws. Inline it so React
+  // and motion take their production paths.
+  define: {
+    "process.env.NODE_ENV": JSON.stringify("production"),
+  },
   build: {
     outDir: "dist-bundle",
     emptyOutDir: true,

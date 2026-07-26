@@ -3,6 +3,96 @@ import { motion, useAnimation } from "framer-motion";
 import { useEffect } from "react";
 import { BaseOverlay, ThemeRenderProps } from "../components/base-overlay";
 import { AlbumArt } from "../components/album-art";
+import type { ThemeMeta } from "../theme";
+
+/**
+ * Everything the playground and the bundle build need to know about this
+ * theme, declared right next to the component. Copy this file into
+ * `src/themes/` and change `meta.id` to make it your own.
+ */
+export const meta: ThemeMeta = {
+  id: "clean",
+  name: "Clean",
+  description: "Artwork with decorative line and animated text",
+  width: 1280,
+  height: 200,
+  fields: [
+    {
+      key: "showArtwork",
+      label: "Show Artwork",
+      type: "boolean",
+      defaultValue: true,
+    },
+    {
+      key: "alignRight",
+      label: "Align Right",
+      type: "boolean",
+      defaultValue: false,
+    },
+    {
+      key: "animateUp",
+      label: "Animate Up",
+      type: "boolean",
+      defaultValue: false,
+    },
+    {
+      key: "lineColor",
+      label: "Line Color",
+      type: "color",
+      defaultValue: "#ff0000",
+    },
+    {
+      key: "textColor",
+      label: "Text Color",
+      type: "color",
+      defaultValue: "#ffffff",
+    },
+    {
+      key: "textStrokeColor",
+      label: "Stroke Color",
+      type: "color",
+      defaultValue: "#000000",
+    },
+    {
+      key: "textStrokeWidth",
+      label: "Stroke Width",
+      type: "number",
+      defaultValue: 2,
+      min: 0,
+      max: 10,
+    },
+    {
+      key: "fontFamily",
+      label: "Font Family",
+      type: "string",
+      defaultValue: "Rubik, system-ui, sans-serif",
+    },
+    {
+      key: "fontSize.artist",
+      label: "Artist Size",
+      type: "number",
+      defaultValue: 40,
+      min: 10,
+      max: 120,
+    },
+    {
+      key: "fontSize.title",
+      label: "Title Size",
+      type: "number",
+      defaultValue: 50,
+      min: 10,
+      max: 120,
+    },
+    {
+      key: "fontSize.label",
+      label: "Label Size",
+      type: "number",
+      defaultValue: 30,
+      min: 10,
+      max: 120,
+    },
+  ],
+};
 
 // Easing functions from devlink (cubic bezier)
 const easeInCubic = [0.32, 0, 0.67, 0] as const;
@@ -93,9 +183,18 @@ function CleanTheme({
     // When animating up, reverse the stagger order for text elements
     const timing = animateUp
       ? {
-          label: { exitDelay: ANIMATION_CONFIG.artist.exitDelay, enterDelay: ANIMATION_CONFIG.artist.enterDelay },
-          title: { exitDelay: ANIMATION_CONFIG.title.exitDelay, enterDelay: ANIMATION_CONFIG.title.enterDelay },
-          artist: { exitDelay: ANIMATION_CONFIG.label.exitDelay, enterDelay: ANIMATION_CONFIG.label.enterDelay },
+          label: {
+            exitDelay: ANIMATION_CONFIG.artist.exitDelay,
+            enterDelay: ANIMATION_CONFIG.artist.enterDelay,
+          },
+          title: {
+            exitDelay: ANIMATION_CONFIG.title.exitDelay,
+            enterDelay: ANIMATION_CONFIG.title.enterDelay,
+          },
+          artist: {
+            exitDelay: ANIMATION_CONFIG.label.exitDelay,
+            enterDelay: ANIMATION_CONFIG.label.enterDelay,
+          },
           line: ANIMATION_CONFIG.line,
           album: ANIMATION_CONFIG.album,
         }
@@ -237,7 +336,10 @@ function CleanTheme({
       />
 
       {/* Title wrapper */}
-      <div className={`flex flex-col ${alignRight ? "text-right" : "text-left"}`} style={{ order: alignRight ? -1 : 1 }}>
+      <div
+        className={`flex flex-col ${alignRight ? "text-right" : "text-left"}`}
+        style={{ order: alignRight ? -1 : 1 }}
+      >
         {/* Artist */}
         <motion.div
           style={{
@@ -344,3 +446,5 @@ export function Clean({
     />
   );
 }
+
+export default Clean;

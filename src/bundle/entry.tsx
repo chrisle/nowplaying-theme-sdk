@@ -1,13 +1,17 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { EnrichedTrack } from "../types";
-import { BUNDLED_THEMES, BundledThemeProps } from "./themes";
+import { USER_THEMES } from "../registry";
+import type { ThemeProps } from "../theme";
 import "../index.css";
 
 /**
  * Bundle entry that bridges the postMessage protocol used by the Now Playing
  * iframe overlay to whichever theme component the host HTML has selected via
  * `<meta name="np-theme" content="...">`.
+ *
+ * Only `src/themes/` is bundled here — the kit's examples live in
+ * `src/examples/` and are never shipped inside a `.np3theme`.
  *
  * Protocol:
  *   { type: "np:hello",  protocol: 1 }
@@ -45,7 +49,7 @@ interface HelloMessage {
 type NPMessage = TrackMessage | HelloMessage | { type: string };
 
 function App({ themeId }: { themeId: string }) {
-  const Component = BUNDLED_THEMES[themeId];
+  const Component = USER_THEMES.find((t) => t.meta.id === themeId)?.Component;
   if (!Component) {
     return (
       <div
@@ -55,7 +59,7 @@ function App({ themeId }: { themeId: string }) {
           padding: 16,
         }}
       >
-        Theme "{themeId}" is not registered in this bundle.
+        Theme "{themeId}" is not present in this bundle.
       </div>
     );
   }
@@ -66,7 +70,10 @@ function App({ themeId }: { themeId: string }) {
     function onMessage(event: MessageEvent<NPMessage>) {
       const msg = event.data;
       if (!msg || typeof msg !== "object") return;
-      if (msg.type === "np:track" && (msg as TrackMessage).protocol === PROTOCOL_VERSION) {
+      if (
+        msg.type === "np:track" &&
+        (msg as TrackMessage).protocol === PROTOCOL_VERSION
+      ) {
         setTrack((msg as TrackMessage).track ?? null);
       }
     }
@@ -79,7 +86,7 @@ function App({ themeId }: { themeId: string }) {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  const props: BundledThemeProps = { track };
+  const props: ThemeProps = { track };
   return <Component {...props} />;
 }
 

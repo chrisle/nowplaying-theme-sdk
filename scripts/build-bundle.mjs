@@ -5,7 +5,9 @@
  * The output is a ZIP archive carrying the `.np3theme` extension, which is what
  * the Now Playing dashboard's Custom Themes upload expects.
  *
- * 1. Reads `bundle.config.json` to learn which themes to ship.
+ * 1. Discovers your themes by scanning `src/themes/` and reading each theme's
+ *    own `meta` export (`bundle.config.json` only names the bundle). The kit's
+ *    worked examples live in `src/examples/` and are never packaged.
  * 2. Runs Vite with `vite.bundle.config.ts` to produce a single shared JS+CSS
  *    pair in `dist-bundle/`.
  * 3. Lays out the bundle in `dist-bundle/staging/`:
@@ -36,6 +38,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import JSZip from "jszip";
 import { readFile, readdir, stat } from "node:fs/promises";
+import { readThemeMetas } from "./theme-meta.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -52,25 +55,35 @@ function log(msg) {
   process.stdout.write(`[build] ${msg}\n`);
 }
 
+/** `bundle.config.json` carries the bundle's name — nothing else. */
 function readConfig() {
   if (!existsSync(CONFIG_PATH)) {
     throw new Error(`Missing ${CONFIG_PATH}`);
   }
   const raw = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
-  if (!Array.isArray(raw.themes) || raw.themes.length === 0) {
-    throw new Error("bundle.config.json must declare a non-empty themes array");
+  if (typeof raw.name !== "string" || raw.name.trim().length === 0) {
+    throw new Error('bundle.config.json must declare a "name" for the bundle');
   }
-  for (const t of raw.themes) {
-    if (!t.id || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(t.id)) {
-      throw new Error(
-        `Invalid theme id ${JSON.stringify(t.id)} — must be lowercase alphanumeric with - or _ (max 64 chars)`,
-      );
-    }
-    if (!t.name) {
-      throw new Error(`Theme ${t.id} is missing a name`);
-    }
+  if (raw.themes) {
+    log(
+      'Note: bundle.config.json no longer declares themes — each theme\'s "meta" export in src/themes/ is the source of truth. You can delete the "themes" key.',
+    );
   }
   return raw;
+}
+
+/** Your themes, straight from `src/themes/` — never `src/examples/`. */
+async function readThemes() {
+  const themes = await readThemeMetas(ROOT);
+  if (themes.length === 0) {
+    throw new Error(
+      "No themes found in src/themes/ — copy src/examples/clean.tsx there and give it your own meta.id",
+    );
+  }
+  log(
+    `Found ${themes.length} theme${themes.length === 1 ? "" : "s"}: ${themes.map((t) => t.id).join(", ")}`,
+  );
+  return themes;
 }
 
 async function runVite() {
@@ -100,6 +113,12 @@ function htmlForTheme(theme, bundleName) {
     <title>${escapeHtml(title)}</title>
     <link rel="stylesheet" href="../../shared/style.css" />
     <style>
+      /* A transparent background alone is not enough: the theme runs in an
+         iframe on the overlay page, and Chrome paints that frame's canvas with
+         the base colour of the used colour scheme — WHITE under the default
+         light scheme. Declaring the dark scheme keeps the canvas transparent so
+         the theme composites over the video in OBS. */
+      html { color-scheme: dark; }
       html, body { margin: 0; padding: 0; background: transparent; }
       #root { width: 100vw; min-height: 100vh; }
     </style>
@@ -140,7 +159,7 @@ function slugify(name) {
   );
 }
 
-async function buildStaging(config) {
+async function buildStaging(config, themes) {
   log("Laying out bundle in staging/...");
   rmSync(STAGING_DIR, { recursive: true, force: true });
   mkdirSync(STAGING_DIR, { recursive: true });
@@ -163,7 +182,7 @@ async function buildStaging(config) {
   }
 
   const manifestThemes = [];
-  for (const theme of config.themes) {
+  for (const theme of themes) {
     const dir = join(STAGING_DIR, "themes", theme.id);
     mkdirSync(dir, { recursive: true });
     writeFileSync(
@@ -231,8 +250,9 @@ async function zipStaging(config) {
  */
 export async function buildBundle() {
   const config = readConfig();
+  const themes = await readThemes();
   await runVite();
-  const { manifest } = await buildStaging(config);
+  const { manifest } = await buildStaging(config, themes);
   const { outPath, fileName } = await zipStaging(config);
   log(
     `Done. ${manifest.themes.length} theme${manifest.themes.length === 1 ? "" : "s"} packaged.`,

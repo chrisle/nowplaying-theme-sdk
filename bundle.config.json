@@ -1,12 +1,3 @@
 {
-  "name": "My Themes",
-  "themes": [
-    {
-      "id": "clean",
-      "name": "Clean",
-      "description": "Artwork with decorative line and animated text",
-      "width": 1280,
-      "height": 200
-    }
-  ]
+  "name": "My Themes"
 }

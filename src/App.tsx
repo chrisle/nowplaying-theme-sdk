@@ -2,120 +2,23 @@ import { useState, useCallback, useMemo } from "react";
 import { DownloadBundleButton } from "./components/download-bundle-button";
 import { EnrichedTrack } from "./types";
 import { MOCK_TRACKS } from "./mock-data";
-import { Clean } from "./themes/clean";
+import { USER_THEMES } from "./registry";
+import { EXAMPLE_THEMES } from "./examples-registry";
+import { resolveFieldValues } from "./discover";
+import type { Theme, ThemeField } from "./theme";
 
-type FieldType = "color" | "boolean" | "number" | "string" | "range";
+/**
+ * Theme playground.
+ *
+ * Themes are discovered, not registered: everything in `src/themes/` (yours)
+ * and `src/examples/` (the kit's) shows up in the picker automatically, and
+ * the sidebar controls come from each theme's own `meta.fields`. That means
+ * adding a theme never requires editing this file — which is what keeps
+ * `npm run upgrade` from ever conflicting with your work.
+ */
 
-interface FieldDef {
-  key: string;
-  label: string;
-  type: FieldType;
-  defaultValue: string | number | boolean;
-  min?: number;
-  max?: number;
-  step?: number;
-}
-
-const THEME_FIELDS: Record<string, FieldDef[]> = {
-  clean: [
-    {
-      key: "showArtwork",
-      label: "Show Artwork",
-      type: "boolean",
-      defaultValue: true,
-    },
-    {
-      key: "alignRight",
-      label: "Align Right",
-      type: "boolean",
-      defaultValue: false,
-    },
-    {
-      key: "animateUp",
-      label: "Animate Up",
-      type: "boolean",
-      defaultValue: false,
-    },
-    {
-      key: "lineColor",
-      label: "Line Color",
-      type: "color",
-      defaultValue: "#ff0000",
-    },
-    {
-      key: "textColor",
-      label: "Text Color",
-      type: "color",
-      defaultValue: "#ffffff",
-    },
-    {
-      key: "textStrokeColor",
-      label: "Stroke Color",
-      type: "color",
-      defaultValue: "#000000",
-    },
-    {
-      key: "textStrokeWidth",
-      label: "Stroke Width",
-      type: "number",
-      defaultValue: 2,
-      min: 0,
-      max: 10,
-    },
-    {
-      key: "fontFamily",
-      label: "Font Family",
-      type: "string",
-      defaultValue: "Rubik, system-ui, sans-serif",
-    },
-    {
-      key: "fontSize.artist",
-      label: "Artist Size",
-      type: "number",
-      defaultValue: 40,
-      min: 10,
-      max: 120,
-    },
-    {
-      key: "fontSize.title",
-      label: "Title Size",
-      type: "number",
-      defaultValue: 50,
-      min: 10,
-      max: 120,
-    },
-    {
-      key: "fontSize.label",
-      label: "Label Size",
-      type: "number",
-      defaultValue: 30,
-      min: 10,
-      max: 120,
-    },
-  ],
-};
-
-/** Convert flat key-value pairs to nested props (e.g. "fontSize.title" → { fontSize: { title } }) */
-function resolveOptions(
-  fields: FieldDef[],
-  values: Record<string, string | number | boolean>,
-): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const field of fields) {
-    const value = values[field.key] ?? field.defaultValue;
-    if (field.key.includes(".")) {
-      const [parent, child] = field.key.split(".");
-      if (!result[parent!]) result[parent!] = {};
-      (result[parent!] as Record<string, unknown>)[child!] = value;
-    } else {
-      result[field.key] = value;
-    }
-  }
-  return result;
-}
-
-/** Registry of available themes for the selector */
-const THEMES = [{ id: "clean", name: "Clean", Component: Clean }] as const;
+const ALL_THEMES: Theme[] = [...USER_THEMES, ...EXAMPLE_THEMES];
+const DEFAULT_THEME = USER_THEMES[0] ?? EXAMPLE_THEMES[0];
 
 function isValidHex(s: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(s);
@@ -124,18 +27,18 @@ function isValidHex(s: string): boolean {
 export default function App() {
   const [trackIndex, setTrackIndex] = useState(0);
   const [track, setTrack] = useState<EnrichedTrack>(MOCK_TRACKS[0]!);
-  const [themeId, setThemeId] = useState<string>("clean");
+  const [themeId, setThemeId] = useState<string>(DEFAULT_THEME?.meta.id ?? "");
   const [themeOptions, setThemeOptions] = useState<
     Record<string, Record<string, string | number | boolean>>
   >({});
 
-  const selectedTheme = THEMES.find((t) => t.id === themeId) ?? THEMES[0];
-  const ThemeComponent = selectedTheme.Component;
-  const fields = THEME_FIELDS[themeId] ?? [];
+  const selectedTheme =
+    ALL_THEMES.find((t) => t.meta.id === themeId) ?? DEFAULT_THEME;
+  const fields = selectedTheme?.meta.fields ?? [];
   const currentOptions = themeOptions[themeId] ?? {};
 
   const resolvedProps = useMemo(
-    () => resolveOptions(fields, currentOptions),
+    () => resolveFieldValues(fields, currentOptions),
     [fields, currentOptions],
   );
 
@@ -186,7 +89,17 @@ export default function App() {
           }}
         >
           <div className="w-full max-w-[1200px] min-h-[300px] flex items-center pl-8">
-            <ThemeComponent track={track} {...(resolvedProps as any)} />
+            {selectedTheme ? (
+              <selectedTheme.Component
+                track={track}
+                {...(resolvedProps as Record<string, unknown>)}
+              />
+            ) : (
+              <p className="text-zinc-500 text-sm">
+                No themes found. Copy src/examples/clean.tsx into src/themes/ to
+                get started.
+              </p>
+            )}
           </div>
         </main>
 
@@ -202,6 +115,13 @@ export default function App() {
                 Reset
               </button>
             </div>
+
+            {fields.length === 0 && (
+              <p className="text-zinc-500 text-xs">
+                This theme declares no editable fields. Add a `fields` array to
+                its `meta` to get controls here.
+              </p>
+            )}
 
             <div className="space-y-3">
               {fields.map((field) => (
@@ -237,11 +157,24 @@ export default function App() {
               onChange={(e) => setThemeId(e.target.value)}
               className="bg-zinc-800 text-white border border-zinc-700 rounded px-3 py-1.5 text-sm"
             >
-              {THEMES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
+              {USER_THEMES.length > 0 && (
+                <optgroup label="Your themes">
+                  {USER_THEMES.map((t) => (
+                    <option key={t.meta.id} value={t.meta.id}>
+                      {t.meta.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {EXAMPLE_THEMES.length > 0 && (
+                <optgroup label="Examples (not packaged)">
+                  {EXAMPLE_THEMES.map((t) => (
+                    <option key={t.meta.id} value={t.meta.id}>
+                      {t.meta.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 
@@ -261,7 +194,7 @@ function FieldControl({
   value,
   onChange,
 }: {
-  field: FieldDef;
+  field: ThemeField;
   value: string | number | boolean | undefined;
   onChange: (value: string | number | boolean) => void;
 }) {

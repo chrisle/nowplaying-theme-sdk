@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && node scripts/build-bundle.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "upgrade": "node scripts/upgrade.mjs"
   },
   "dependencies": {
     "motion": "^12.24.0",

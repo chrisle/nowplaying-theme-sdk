@@ -1,5 +1,5 @@
 import { EnrichedTrack } from "../types";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 
 interface BaseOverlayProps {
   track: EnrichedTrack | null;
@@ -30,21 +30,40 @@ export function BaseOverlay({
 }: BaseOverlayProps) {
   const [displayTrack, setDisplayTrack] = useState<EnrichedTrack | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  // Updating state midway through a timeline must not re-run the effect and
+  // orphan the original timers. This ref is the timeline's source of truth.
+  const displayTrackRef = useRef<EnrichedTrack | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    const pendingTimers = new Map<ReturnType<typeof setTimeout>, () => void>();
+    const wait = (ms: number): Promise<boolean> =>
+      new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          pendingTimers.delete(timer);
+          resolve(!cancelled);
+        }, ms);
+        pendingTimers.set(timer, () => {
+          clearTimeout(timer);
+          resolve(false);
+        });
+      });
+
     // Handle initial track or track changes
     if (!track) {
       return; // No track to display
     }
 
     // If displayTrack is not set yet, initialize it without animation
-    if (!displayTrack) {
+    const currentDisplayTrack = displayTrackRef.current;
+    if (!currentDisplayTrack) {
+      displayTrackRef.current = track;
       setDisplayTrack(track);
       return;
     }
 
     // If same track, no change needed
-    if (track.id === displayTrack.id) {
+    if (track.id === currentDisplayTrack.id) {
       return;
     }
 
@@ -54,32 +73,31 @@ export function BaseOverlay({
 
       // Phase 1: Wait for outgoing animation
       // Theme plays exit animation while isAnimating is true
-      await new Promise((resolve) => {
-        setTimeout(resolve, animationTiming.exitDuration);
-      });
+      if (!(await wait(animationTiming.exitDuration))) return;
 
       // Phase 2: Update the track data
+      displayTrackRef.current = track;
       setDisplayTrack(track);
 
       // Brief pause to ensure DOM update
-      await new Promise((resolve) => {
-        setTimeout(resolve, 50);
-      });
+      if (!(await wait(50))) return;
 
       // Phase 3: Trigger incoming animation
       // isAnimating is still true, theme plays entry animation
-      await new Promise((resolve) => {
-        setTimeout(resolve, animationTiming.enterDuration);
-      });
+      if (!(await wait(animationTiming.enterDuration))) return;
 
       // Animation complete
       setIsAnimating(false);
     };
 
     handleTrackChange();
+    return () => {
+      cancelled = true;
+      for (const cancel of pendingTimers.values()) cancel();
+      pendingTimers.clear();
+    };
   }, [
     track,
-    displayTrack?.id,
     animationTiming.exitDuration,
     animationTiming.enterDuration,
   ]);

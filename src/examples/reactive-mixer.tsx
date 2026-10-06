@@ -3,7 +3,7 @@ import { ControllerMixer } from "../components/mixer";
 
 export const meta: ThemeMeta = {
   id: "reactive-mixer",
-  name: "Mixer",
+  name: "MIDI Playground",
   width: 320,
   height: 520,
   description:

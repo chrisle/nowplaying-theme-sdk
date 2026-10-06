@@ -314,10 +314,7 @@ export function EventInputs({
           Replay
         </button>
         {inputs.playing && (
-          <button
-            className={button}
-            onClick={() => inputs.changeMode("usb")}
-          >
+          <button className={button} onClick={() => inputs.changeMode("usb")}>
             Stop replay
           </button>
         )}

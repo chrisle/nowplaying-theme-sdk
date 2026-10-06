@@ -294,38 +294,43 @@ NP3's existing MIDI interpretation. Unsupported controls are not advertised.
 ### Select your USB MIDI device
 
 1. Open the SDK playground on `localhost` or `127.0.0.1` in Chrome or Edge.
-2. Choose the **Mixer** theme. The mixer is the theme preview itself.
-3. Under **Event inputs**, choose **USB MIDI device** and click **Connect USB MIDI**.
-   Allow MIDI access, then select your controller's input port in **USB MIDI device**.
-4. The SDK auto-detects NP3's controller mapping. If your port has a generic name,
-   select its model under **Controller mapping**.
-5. Move a hardware fader or knob. The theme displays that controller's positions.
+2. Choose the **MIDI Playground** theme. The mixer is the theme preview itself.
+3. Under **Event inputs**, choose **USB MIDI device** and click **Connect USB
+   MIDI**. Allow MIDI access, then select your controller's input port in **USB
+   MIDI device**.
+4. The SDK auto-detects NP3's controller mapping. If your port has a generic
+   name, select its model under **Controller mapping**.
+5. Move a hardware fader or knob. The theme displays that controller's
+   positions.
 
-The SDK listens only to the selected MIDI input, clears positions when it disconnects
-or you switch devices, and keeps unobserved controls dim until the hardware reports
-values. This direct USB mode does not require NP3 to be running or a development token.
-It uses NP3's public mapping catalog and the same MIDI application/normalization code.
-Internet access is needed to load the catalog and mapping. The SDK requests MIDI input
-access without SysEx and sends no MIDI output. Browsers without Web MIDI support show
-an explanation and can still use a recorded session or the NP3 feed.
+The SDK listens only to the selected MIDI input, clears positions when it
+disconnects or you switch devices, and keeps unobserved controls dim until the
+hardware reports values. This direct USB mode does not require NP3 to be running
+or a development token. It uses NP3's public mapping catalog and the same MIDI
+application/normalization code. Internet access is needed to load the catalog
+and mapping. The SDK requests MIDI input access without SysEx and sends no MIDI
+output. Browsers without Web MIDI support show an explanation and can still use
+a recorded session or the NP3 feed.
 
 ### Receive the NP3 desktop feed
 
-To test combined multi-port state, choose **Now Playing / MIDI**. Run the updated
-NP3 desktop app with a random `NP_THEME_DEV_TOKEN` of at least 32 characters, put the
-same token in the SDK's `.env.local`, and restart both. Do not prefix it with `VITE_`.
-The SDK proxies its local event endpoint to NP3 on `127.0.0.1:17831`, keeping the token
-on the server. Existing installed NP3 versions need the new desktop changes;
-production delivery also needs the corresponding web-server changes.
+To test combined multi-port state, choose **Now Playing / MIDI**. Run the
+updated NP3 desktop app with a random `NP_THEME_DEV_TOKEN` of at least 32
+characters, put the same token in the SDK's `.env.local`, and restart both. Do
+not prefix it with `VITE_`. The SDK proxies its local event endpoint to NP3 on
+`127.0.0.1:17831`, keeping the token on the server. Existing installed NP3
+versions need the new desktop changes; production delivery also needs the
+corresponding web-server changes.
 
 ### Sample, record and replay
 
 **Sample mixer** shows a sample controller snapshot. Its mix scores are mocked.
-**Record** captures the starting snapshot plus event timing from the selected input.
-**Replay** sends those events through the same decoder used by the live feed and
-the shipped iframe. **Save session** and **Load session** let you reuse recordings.
-Recording stops at 10,000 frames; imported sessions must be at most 10 MB and
-one hour long. Transport failures and controller disconnects clear stale values.
+**Record** captures the starting snapshot plus event timing from the selected
+input. **Replay** sends those events through the same decoder used by the live
+feed and the shipped iframe. **Save session** and **Load session** let you reuse
+recordings. Recording stops at 10,000 frames; imported sessions must be at most
+10 MB and one hour long. Transport failures and controller disconnects clear
+stale values.
 
 The shipped protocol remains version 1 with an additive controller message:
 

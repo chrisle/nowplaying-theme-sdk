@@ -85,7 +85,9 @@ export function createUsbController(mapping: ControllerMapping) {
   const snapshot = (): ThemeControllerSnapshot => ({
     sourceId: "midi",
     connected: true,
-    state: structuredClone(state) as unknown as import("../events").ControllerState,
+    state: structuredClone(
+      state,
+    ) as unknown as import("../events").ControllerState,
     availableControls,
     observedControls: [...observed].sort(),
     timestamp: Date.now(),

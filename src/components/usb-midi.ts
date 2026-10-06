@@ -53,7 +53,9 @@ export function useUsbMidi(
       return;
     }
     requesting.current = true;
-    setStatus("Requesting MIDI access… If no permission prompt appears, open the SDK in Chrome or Edge.");
+    setStatus(
+      "Requesting MIDI access… If no permission prompt appears, open the SDK in Chrome or Edge.",
+    );
     try {
       const next =
         accessRef.current ??
@@ -62,7 +64,11 @@ export function useUsbMidi(
       accessRef.current = next;
       setAccess(next);
       refresh(next);
-      setStatus("Select a USB MIDI device.");
+      setStatus(
+        [...next.inputs.values()].some((input) => input.state === "connected")
+          ? "Select a USB MIDI device."
+          : "No MIDI inputs found. Connect your USB controller.",
+      );
     } catch (error) {
       if (mounted.current)
         setStatus(

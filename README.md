@@ -339,7 +339,21 @@ The shipped protocol remains version 1 with an additive controller message:
 { type: "np:mix", protocol: 1, state: mixState /* or null */ }
 ```
 
-`src/examples/reactive-mixer.tsx` in the upstream SDK demonstrates
-controller-driven visuals. This theme checkout also bundles it as
-`src/themes/reactive-mixer.tsx`. Run `npm test`, `npm run typecheck`, and
-`npm run build` before shipping.
+`src/examples/reactive-mixer.tsx` in the upstream SDK renders the NP3 mixer as a controller-driven theme. This theme checkout also bundles it as `src/themes/reactive-mixer.tsx`.
+Run `npm test`, `npm run typecheck`, and `npm run build` before shipping.
+
+### Transport and jog controls
+
+The `controller` subscription includes per-deck `playing`, `cueActive`, `loopActive`,
+and `jogTouching`. Mapped loop-in/out/half/double buttons expose `loopInPressed`,
+`loopOutPressed`, `loopHalfPressed`, and `loopDoublePressed`, with corresponding
+`loopInCount`, `loopOutCount`, `loopHalfCount`, and `loopDoubleCount` press counters.
+`playPressCount` and `cuePressCount` count repeated presses. `jogValue` is the latest
+raw MIDI value (0–127); `jogSequence` counts jog-turn messages. These counters preserve
+activity across snapshot coalescing. They reset on a new controller session.
+
+Read them with `controllerValue(controller, "deck1.jogValue")` (and similarly for
+other paths). Only mapped, observed controls have values. Jog direction and distance
+are not inferred: relative encoder formats differ by device. Loop-in/out presses do
+not imply an active loop or loop length. The MIDI Playground transport panel displays
+these values; recording/replay captures them in the same controller snapshots.

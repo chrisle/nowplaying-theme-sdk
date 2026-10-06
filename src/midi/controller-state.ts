@@ -213,6 +213,21 @@ export interface DeckState {
    */
   isOnAir?: boolean;
 
+  /** Raw jog-turn MIDI value; encoding depends on the controller mapping. */
+  jogValue?: number;
+  /** Number of mapped jog-turn messages received since reset. */
+  jogSequence?: number;
+  playPressCount?: number;
+  cuePressCount?: number;
+  loopInPressed?: boolean;
+  loopInCount?: number;
+  loopOutPressed?: boolean;
+  loopOutCount?: number;
+  loopHalfPressed?: boolean;
+  loopHalfCount?: number;
+  loopDoublePressed?: boolean;
+  loopDoubleCount?: number;
+
   // Event timestamps for reliable play state detection
   // Used to determine if play was pressed after cue release (definitively playing)
   cueReleasedAt?: number; // Timestamp when cue was last released

@@ -1,7 +1,7 @@
 import type { ControllerMapping, MidiMessage } from "./controller-state";
 import { createDefaultControllerState } from "./controller-state";
 import { applyMidiMessage, findControlMapping } from "./processor";
-import { visualControlPaths } from "./visual-controls";
+import { observedControlPaths, visualControlPaths } from "./visual-controls";
 import type { ThemeControllerSnapshot } from "../events";
 
 export interface MappingEntry {
@@ -99,7 +99,8 @@ export function createUsbController(mapping: ControllerMapping) {
       if (!message) return null;
       const control = findControlMapping(mapping, message);
       if (!control || !visualControlPaths(control).length) return null;
-      for (const path of visualControlPaths(control)) observed.add(path);
+      for (const path of observedControlPaths(control, message))
+        observed.add(path);
       state = applyMidiMessage(state, mapping, message);
       return snapshot();
     },

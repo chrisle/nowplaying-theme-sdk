@@ -84,7 +84,8 @@ export function applyMidiMessage(
   }
 
   // For buttons, convert to boolean
-  const boolValue = control.isButton ? value > 0 : undefined;
+  const pressed = message.type !== "note_off" && value > 0;
+  const boolValue = control.isButton ? pressed : undefined;
 
   // Create a new state (immutable update)
   const newState = { ...state, lastUpdateMs: message.timestamp };
@@ -151,7 +152,8 @@ export function applyMidiMessage(
         newDeck.tempo = normalizeBipolar(value);
         break;
       case "play_pause":
-        if (boolValue !== undefined && message.type === "note_on") {
+        if (boolValue === true && message.type === "note_on") {
+          newDeck.playPressCount = (currentDeck.playPressCount ?? 0) + 1;
           newDeck.playPressedAt = message.timestamp;
           // The first play press after a cue release definitively starts
           // playback, which avoids toggle tracking issues where state gets
@@ -172,6 +174,8 @@ export function applyMidiMessage(
         break;
       case "cue":
         newDeck.cueActive = boolValue ?? false;
+        if (pressed)
+          newDeck.cuePressCount = (currentDeck.cuePressCount ?? 0) + 1;
         // Releasing cue stops playback (deck pauses at cue point)
         // This is a definitive state - we KNOW the deck is not playing after cue release
         if (!boolValue) {
@@ -180,19 +184,41 @@ export function applyMidiMessage(
         }
         break;
       case "sync":
-        if (boolValue !== undefined && message.type === "note_on") {
+        if (boolValue === true && message.type === "note_on") {
           newDeck.syncActive = !currentDeck.syncActive;
         }
         break;
       case "loop_active":
-        if (boolValue !== undefined && message.type === "note_on") {
+        if (boolValue === true && message.type === "note_on") {
           newDeck.loopActive = !currentDeck.loopActive;
         }
         break;
       case "key_lock":
-        if (boolValue !== undefined && message.type === "note_on") {
+        if (boolValue === true && message.type === "note_on") {
           newDeck.keyLock = !currentDeck.keyLock;
         }
+        break;
+      case "loop_in":
+        newDeck.loopInPressed = pressed;
+        if (pressed) newDeck.loopInCount = (currentDeck.loopInCount ?? 0) + 1;
+        break;
+      case "loop_out":
+        newDeck.loopOutPressed = pressed;
+        if (pressed) newDeck.loopOutCount = (currentDeck.loopOutCount ?? 0) + 1;
+        break;
+      case "loop_half":
+        newDeck.loopHalfPressed = pressed;
+        if (pressed)
+          newDeck.loopHalfCount = (currentDeck.loopHalfCount ?? 0) + 1;
+        break;
+      case "loop_double":
+        newDeck.loopDoublePressed = pressed;
+        if (pressed)
+          newDeck.loopDoubleCount = (currentDeck.loopDoubleCount ?? 0) + 1;
+        break;
+      case "jog_turn":
+        newDeck.jogValue = value;
+        newDeck.jogSequence = (currentDeck.jogSequence ?? 0) + 1;
         break;
       case "jog_touch":
         newDeck.jogTouching = boolValue ?? false;

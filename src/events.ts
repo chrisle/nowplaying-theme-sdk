@@ -176,7 +176,7 @@ export function isThemeControllerSnapshot(
   const v = value as Record<string, unknown>;
   const paths = (a: unknown): a is string[] =>
     Array.isArray(a) &&
-    a.length <= 128 &&
+    a.length <= 256 &&
     a.every(
       (p) => typeof p === "string" && /^(deck[1-6]\.)?[a-zA-Z]{1,32}$/.test(p),
     );

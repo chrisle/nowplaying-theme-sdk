@@ -74,6 +74,54 @@ export interface DeckState {
    * Hardware on-air indicator from DJM mixer (if available)
    */
   isOnAir?: boolean;
+  /**
+   * Mapped input event count since connection/reset.
+   */
+  jogSequence?: number;
+  /**
+   * Mapped input event count since connection/reset.
+   */
+  playPressCount?: number;
+  /**
+   * Mapped input event count since connection/reset.
+   */
+  cuePressCount?: number;
+  /**
+   * Mapped input event count since connection/reset.
+   */
+  loopInCount?: number;
+  /**
+   * Mapped input event count since connection/reset.
+   */
+  loopOutCount?: number;
+  /**
+   * Mapped input event count since connection/reset.
+   */
+  loopHalfCount?: number;
+  /**
+   * Mapped input event count since connection/reset.
+   */
+  loopDoubleCount?: number;
+  /**
+   * Raw jog-turn MIDI value. Direction/relative encoding is controller-specific.
+   */
+  jogValue?: number;
+  /**
+   * Whether the mapped loop button is pressed.
+   */
+  loopInPressed?: boolean;
+  /**
+   * Whether the mapped loop button is pressed.
+   */
+  loopOutPressed?: boolean;
+  /**
+   * Whether the mapped loop button is pressed.
+   */
+  loopHalfPressed?: boolean;
+  /**
+   * Whether the mapped loop button is pressed.
+   */
+  loopDoublePressed?: boolean;
   [k: string]: unknown;
 }
 

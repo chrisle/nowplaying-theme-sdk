@@ -298,32 +298,43 @@ export function EventInputs({
       <div className="flex flex-wrap gap-2">
         {inputs.mode !== "replay" && (
           <button
-            className={button}
+            className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+            aria-label={inputs.recording ? "Stop recording" : "Record"}
+            title={inputs.recording ? "Stop recording" : "Record"}
             onClick={
               inputs.recording ? inputs.stopRecording : inputs.startRecording
             }
           >
-            {inputs.recording ? "Stop recording" : "Record"}
+            <SessionIcon kind={inputs.recording ? "stop" : "record"} />
           </button>
         )}
         <button
-          className={button}
+          className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+          aria-label="Replay"
+          title="Replay"
           disabled={!inputs.frames.length || inputs.playing || inputs.recording}
           onClick={inputs.replay}
         >
-          Replay
+          <SessionIcon kind="play" />
         </button>
         {inputs.playing && (
-          <button className={button} onClick={() => inputs.changeMode("usb")}>
-            Stop replay
+          <button
+            className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+            aria-label="Stop replay"
+            title="Stop replay"
+            onClick={() => inputs.changeMode("usb")}
+          >
+            <SessionIcon kind="stop" />
           </button>
         )}
         <button
-          className={button}
+          className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+          aria-label="Save session"
+          title="Save session"
           disabled={!inputs.frames.length || inputs.recording}
           onClick={inputs.download}
         >
-          Save session
+          <SessionIcon kind="save" />
         </button>
         <label className={button}>
           Load session
@@ -340,5 +351,52 @@ export function EventInputs({
         </label>
       </div>
     </section>
+  );
+}
+
+function SessionIcon({ kind }: { kind: "record" | "play" | "stop" | "save" }) {
+  return (
+    <svg
+      aria-hidden="true"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {kind === "record" && (
+        <circle
+          cx="12"
+          cy="12"
+          r="7"
+          fill="currentColor"
+          stroke="none"
+          className="text-red-500"
+        />
+      )}
+      {kind === "play" && (
+        <path d="m8 5 11 7-11 7Z" fill="currentColor" stroke="none" />
+      )}
+      {kind === "stop" && (
+        <rect
+          x="5"
+          y="5"
+          width="14"
+          height="14"
+          rx="1"
+          fill="currentColor"
+          stroke="none"
+        />
+      )}
+      {kind === "save" && (
+        <>
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z" />
+          <path d="M17 21v-8H7v8M7 3v5h8" />
+        </>
+      )}
+    </svg>
   );
 }

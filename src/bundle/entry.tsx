@@ -1,106 +1,34 @@
-import { StrictMode, useEffect, useRef, useState } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { EnrichedTrack } from "../types";
+import { EMPTY_EVENTS, reduceThemeMessage, subscribedProps } from "../events";
 import { USER_THEMES } from "../registry";
-import type { ThemeProps } from "../theme";
 import "../index.css";
 
-/**
- * Bundle entry that bridges the postMessage protocol used by the Now Playing
- * iframe overlay to whichever theme component the host HTML has selected via
- * `<meta name="np-theme" content="...">`.
- *
- * Only `src/themes/` is bundled here — the kit's examples live in
- * `src/examples/` and are never shipped inside a `.np3theme`.
- *
- * Protocol:
- *   { type: "np:hello",  protocol: 1 }
- *   { type: "np:track",  protocol: 1, track, connected }
- *   { type: "np:mix",    protocol: 1, state }
- */
-
-const PROTOCOL_VERSION = 1;
-
-function readThemeId(): string {
-  const meta = document.head.querySelector<HTMLMetaElement>(
-    'meta[name="np-theme"]',
-  );
-  const id = meta?.content?.trim();
-  if (!id) {
-    throw new Error(
-      'Missing <meta name="np-theme" content="..."> in bundle HTML',
-    );
-  }
-  return id;
-}
-
-interface TrackMessage {
-  type: "np:track";
-  protocol: number;
-  track: EnrichedTrack | null;
-  connected?: boolean;
-}
-
-interface HelloMessage {
-  type: "np:hello";
-  protocol: number;
-}
-
-type NPMessage = TrackMessage | HelloMessage | { type: string };
-
 function App({ themeId }: { themeId: string }) {
-  const Component = USER_THEMES.find((t) => t.meta.id === themeId)?.Component;
-  if (!Component) {
-    return (
-      <div
-        style={{
-          color: "#fff",
-          fontFamily: "system-ui, sans-serif",
-          padding: 16,
-        }}
-      >
-        Theme "{themeId}" is not present in this bundle.
-      </div>
-    );
-  }
-
-  const [track, setTrack] = useState<EnrichedTrack | null>(null);
-  const readyAnnounced = useRef(false);
-
+  const selected = USER_THEMES.find((theme) => theme.meta.id === themeId);
+  const Component = selected?.Component;
+  const events = selected?.meta.events;
+  const [state, setState] = useState(EMPTY_EVENTS);
   useEffect(() => {
-    function onMessage(event: MessageEvent<NPMessage>) {
-      const msg = event.data;
-      if (!msg || typeof msg !== "object") return;
-      if (
-        msg.type === "np:track" &&
-        (msg as TrackMessage).protocol === PROTOCOL_VERSION
-      ) {
-        setTrack((msg as TrackMessage).track ?? null);
-      }
-    }
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window.parent) return;
+      setState((current) => reduceThemeMessage(current, event.data));
+    };
     window.addEventListener("message", onMessage);
-    // StrictMode replays effects in development. Announce once so the host
-    // does not resend its buffered state twice.
-    if (!readyAnnounced.current) {
-      readyAnnounced.current = true;
-      window.parent?.postMessage(
-        { type: "np:ready", protocol: PROTOCOL_VERSION },
-        "*",
-      );
-    }
+    // Replay after each effect setup: StrictMode may detach the first listener.
+    window.parent.postMessage({ type: "np:ready", protocol: 1 }, "*");
     return () => window.removeEventListener("message", onMessage);
   }, []);
-
-  const props: ThemeProps = { track };
-  return <Component {...props} />;
+  if (!Component)
+    return <p>Theme "{themeId}" is not present in this bundle.</p>;
+  return <Component {...subscribedProps(state, events)} />;
 }
-
+const themeId = document.head.querySelector<HTMLMetaElement>(
+  'meta[name="np-theme"]',
+)?.content;
 const root = document.getElementById("root");
-if (!root) {
-  throw new Error("Bundle entry expected #root element in the host HTML");
-}
-
-const themeId = readThemeId();
+if (!themeId || !root)
+  throw new Error("Bundle HTML must declare np-theme and #root");
 createRoot(root).render(
   <StrictMode>
     <App themeId={themeId} />

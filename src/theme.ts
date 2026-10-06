@@ -1,3 +1,8 @@
+import type {
+  ThemeEvent,
+  ThemeControllerSnapshot,
+  MixProcessorState,
+} from "./events";
 import type { ComponentType } from "react";
 import type { EnrichedTrack } from "./types";
 
@@ -49,10 +54,15 @@ export interface ThemeMeta {
   height?: number;
   /** Controls rendered in the playground sidebar, passed to your component. */
   fields?: ThemeField[];
+  /** Additional typed data feeds. Omitted: track and mix for legacy themes. */
+  events?: ThemeEvent[];
 }
 
 export interface ThemeProps {
   track: EnrichedTrack | null;
+  mixState?: MixProcessorState | null;
+  controller?: ThemeControllerSnapshot | null;
+  connected?: boolean;
   [key: string]: unknown;
 }
 

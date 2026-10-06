@@ -78,6 +78,18 @@ function validate(meta, source, seen) {
   if (typeof meta.name !== "string" || meta.name.length === 0) {
     throw new Error(`${source}: meta.name is required`);
   }
+  if (
+    meta.events !== undefined &&
+    (!Array.isArray(meta.events) ||
+      meta.events.some(
+        (event) => !["track", "mix", "controller"].includes(event),
+      ) ||
+      new Set(meta.events).size !== meta.events.length)
+  ) {
+    throw new Error(
+      `${source}: meta.events must list unique supported events: track, mix, controller`,
+    );
+  }
   const duplicate = seen.get(meta.id);
   if (duplicate) {
     throw new Error(
@@ -134,8 +146,8 @@ export async function readThemeMetas(root) {
           `${relative}: no theme component exported — add \`export default\``,
         );
       }
-      const { id, name, description, width, height } = mod.meta;
-      return { id, name, description, width, height, source: relative };
+      const { id, name, description, width, height, events } = mod.meta;
+      return { id, name, description, width, height, events, source: relative };
     });
   } finally {
     await rm(tmp, { recursive: true, force: true });

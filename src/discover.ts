@@ -56,6 +56,20 @@ export function buildRegistry(modules: Record<string, unknown>): Theme[] {
       warn(source, "meta.name is required — skipping");
       continue;
     }
+    if (
+      meta.events !== undefined &&
+      (!Array.isArray(meta.events) ||
+        meta.events.some(
+          (event) => !["track", "mix", "controller"].includes(event),
+        ) ||
+        new Set(meta.events).size !== meta.events.length)
+    ) {
+      warn(
+        source,
+        "meta.events must list unique supported events: track, mix, controller — skipping",
+      );
+      continue;
+    }
     const duplicate = seen.get(meta.id);
     if (duplicate) {
       warn(source, `duplicate theme id "${meta.id}" (already in ${duplicate})`);

@@ -196,6 +196,7 @@ async function buildStaging(config, themes) {
       description: theme.description,
       width: theme.width,
       height: theme.height,
+      events: theme.events,
     });
   }
 

@@ -1,3 +1,4 @@
+import { EventInputs, useThemeInputs } from "./components/event-inputs";
 import { useState, useCallback, useMemo } from "react";
 import { DownloadBundleButton } from "./components/download-bundle-button";
 import { EnrichedTrack } from "./types";
@@ -34,6 +35,7 @@ export default function App() {
 
   const selectedTheme =
     ALL_THEMES.find((t) => t.meta.id === themeId) ?? DEFAULT_THEME;
+  const inputs = useThemeInputs(track, selectedTheme?.meta.events);
   const fields = selectedTheme?.meta.fields ?? [];
   const currentOptions = themeOptions[themeId] ?? {};
 
@@ -91,8 +93,8 @@ export default function App() {
           <div className="w-full max-w-[1200px] min-h-[300px] flex items-center pl-8">
             {selectedTheme ? (
               <selectedTheme.Component
-                track={track}
                 {...(resolvedProps as Record<string, unknown>)}
+                {...inputs.props}
               />
             ) : (
               <p className="text-zinc-500 text-sm">
@@ -105,6 +107,7 @@ export default function App() {
 
         {/* Customization sidebar */}
         <aside className="w-[280px] bg-zinc-900 border-l border-zinc-800 flex-shrink-0 overflow-y-auto">
+          <EventInputs inputs={inputs} />
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white text-sm font-semibold">Customize</h2>

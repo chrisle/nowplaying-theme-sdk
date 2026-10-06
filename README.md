@@ -253,3 +253,92 @@ Custom themes require an active paid subscription.
 Themes you build with `BaseOverlay` work out of the box: the bundle entry
 listens for `np:track` messages from the parent overlay page and passes the
 current `track` prop through to your component.
+
+## Reactive themes and controller events
+
+A theme definition can subscribe to `track`, `mix`, and `controller`:
+
+```tsx
+import type { ThemeMeta, ThemeProps } from "../theme";
+import { controllerValue } from "../events";
+
+export const meta: ThemeMeta = {
+  id: "my-reactive-theme",
+  name: "My Reactive Theme",
+  events: ["track", "controller"],
+};
+
+export default function MyReactiveTheme({ track, controller }: ThemeProps) {
+  const fader = controllerValue(controller, "deck1.channelFader");
+  return (
+    <div style={{ opacity: typeof fader === "number" ? fader : 0 }}>
+      {track?.title}
+    </div>
+  );
+}
+```
+
+`controller` is physical MIDI state from NP3's existing device mappings, before
+source-authority merging, crossfader gating or on-air scoring. `mixState` is
+NP3's interpreted mix state. They are separate feeds. Neither is an audio meter.
+Omitting `events` preserves the legacy track + mix subscriptions; `events: []`
+requests neither. The bundle manifest retains each theme's subscriptions.
+
+Faders and trim use 0–1; EQ, filter, pitch and crossfader use -1–1. The snapshot
+contains `availableControls` (supported by the mapping), `observedControls`
+(reported since connection/reset), and `connected`. `controllerValue` returns
+`undefined` for unavailable, disconnected or never-observed controls, so initial
+defaults do not masquerade as hardware readings. Button/toggle state follows
+NP3's existing MIDI interpretation. Unsupported controls are not advertised.
+
+### Test with your MIDI controller
+
+1. Run the updated NP3 desktop app with `NP_THEME_DEV_TOKEN` set to a random
+   development token of at least 32 characters. The loopback listener is
+   disabled unless this variable is set.
+2. Set the same token in the SDK's `.env.local`:
+   `NP_THEME_DEV_TOKEN=<your-development-token>` and restart `npm run dev`.
+   Alternatively, launch both processes from shells with that variable exported.
+   Do not prefix it with `VITE_`: it stays on the server, outside the browser
+   bundle.
+3. Open the playground using `localhost` or `127.0.0.1`, select **Reactive
+   Mixer**, then choose **Now Playing / MIDI** under **Event inputs**. NP3 must
+   have a supported controller connected and its MIDI mapping loaded.
+4. Move a fader or knob. The preview receives the same controller event envelope
+   used by NP3 overlays. Multiple MIDI ports feed the same controller state.
+
+For example, a shell can generate a token without printing it:
+
+```sh
+export NP_THEME_DEV_TOKEN="$(node -p "require('node:crypto').randomBytes(32).toString('hex')")"
+```
+
+The SDK proxies its local event endpoint to NP3 on `127.0.0.1:17831`, injecting
+the development token server-side. The listener grants read-only event access
+and rejects direct browser-origin requests. The NP3 desktop changes must be
+built/run locally or included in a subsequent app release; existing installed
+versions do not provide this endpoint. Production controller delivery also
+requires the corresponding web-server changes.
+
+### Simulate, record and replay
+
+**Simulated mixer** provides four decks with faders, EQ, filter, trim, pitch,
+buttons and crossfader. Its mix scores are mocked; it does not simulate NP3's
+on-air algorithm. **Record** captures the starting snapshot plus event timing.
+**Replay** sends those events through the same decoder used by the live feed and
+the shipped iframe. **Save session** and **Load session** let you reuse
+recordings. Recording stops at 10,000 frames; imported sessions must be at most
+10 MB and one hour long. Transport failures and controller disconnects clear
+stale values.
+
+The shipped protocol remains version 1 with an additive controller message:
+
+```ts
+{ type: "np:controller", protocol: 1, controller: snapshot /* or null */ }
+{ type: "np:mix", protocol: 1, state: mixState /* or null */ }
+```
+
+`src/examples/reactive-mixer.tsx` in the upstream SDK demonstrates
+controller-driven visuals. This theme checkout also bundles it as
+`src/themes/reactive-mixer.tsx`. Run `npm test`, `npm run typecheck`, and
+`npm run build` before shipping.

@@ -18,7 +18,7 @@ export function useUsbMidi(
   const [mappingId, setMappingId] = useState("");
   const [mappings, setMappings] = useState<MappingEntry[]>([]);
   const [status, setStatus] = useState(
-    "Connect USB MIDI to choose your controller.",
+    "Allow MIDI access to choose your controller.",
   );
   const topology = useRef("");
   const [revision, setRevision] = useState(0);
@@ -66,7 +66,7 @@ export function useUsbMidi(
       refresh(next);
       setStatus(
         [...next.inputs.values()].some((input) => input.state === "connected")
-          ? "Select a USB MIDI device."
+          ? "Select a MIDI device."
           : "No MIDI inputs found. Connect your USB controller.",
       );
     } catch (error) {
@@ -161,6 +161,7 @@ export function useUsbMidi(
     };
   }, [enabled, access, deviceId, mappingId, mappings, revision, receive]);
   return {
+    allowed: access !== null,
     devices,
     deviceId,
     mappings,

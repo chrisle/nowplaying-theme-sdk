@@ -249,24 +249,32 @@ export function EventInputs({
       </p>
       {inputs.mode === "usb" && (
         <div className="space-y-3">
-          <button className={button} onClick={() => void inputs.usb.connect()}>
-            Connect USB MIDI
-          </button>
-          <label className="flex flex-col gap-1">
-            USB MIDI device
-            <select
+          {!inputs.usb.allowed ? (
+            <button
               className={button}
-              value={inputs.usb.deviceId}
-              onChange={(event) => inputs.usb.selectDevice(event.target.value)}
+              onClick={() => void inputs.usb.connect()}
             >
-              <option value="">Select a device</option>
-              {inputs.usb.devices.map((device) => (
-                <option key={device.id} value={device.id}>
-                  {device.name ?? device.id}
-                </option>
-              ))}
-            </select>
-          </label>
+              Allow MIDI
+            </button>
+          ) : (
+            <label className="flex flex-col gap-1">
+              Select MIDI device
+              <select
+                className={button}
+                value={inputs.usb.deviceId}
+                onChange={(event) =>
+                  inputs.usb.selectDevice(event.target.value)
+                }
+              >
+                <option value="">Select a device</option>
+                {inputs.usb.devices.map((device) => (
+                  <option key={device.id} value={device.id}>
+                    {device.name ?? device.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {inputs.usb.deviceId && (
             <label className="flex flex-col gap-1">
               Controller mapping
@@ -295,60 +303,65 @@ export function EventInputs({
             : "Controller disconnected"}
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
-        {inputs.mode !== "replay" && (
+      <div className="pt-5 space-y-3">
+        <h2 className="text-white font-semibold">MIDI Recorder / Playback</h2>
+        <div className="flex flex-wrap gap-2">
+          {inputs.mode !== "replay" && (
+            <button
+              className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+              aria-label={inputs.recording ? "Stop recording" : "Record"}
+              title={inputs.recording ? "Stop recording" : "Record"}
+              onClick={
+                inputs.recording ? inputs.stopRecording : inputs.startRecording
+              }
+            >
+              <SessionIcon kind={inputs.recording ? "stop" : "record"} />
+            </button>
+          )}
           <button
             className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
-            aria-label={inputs.recording ? "Stop recording" : "Record"}
-            title={inputs.recording ? "Stop recording" : "Record"}
-            onClick={
-              inputs.recording ? inputs.stopRecording : inputs.startRecording
+            aria-label="Replay"
+            title="Replay"
+            disabled={
+              !inputs.frames.length || inputs.playing || inputs.recording
             }
+            onClick={inputs.replay}
           >
-            <SessionIcon kind={inputs.recording ? "stop" : "record"} />
+            <SessionIcon kind="play" />
           </button>
-        )}
-        <button
-          className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
-          aria-label="Replay"
-          title="Replay"
-          disabled={!inputs.frames.length || inputs.playing || inputs.recording}
-          onClick={inputs.replay}
-        >
-          <SessionIcon kind="play" />
-        </button>
-        {inputs.playing && (
+          {inputs.playing && (
+            <button
+              className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+              aria-label="Stop replay"
+              title="Stop replay"
+              onClick={() => inputs.changeMode("usb")}
+            >
+              <SessionIcon kind="stop" />
+            </button>
+          )}
           <button
-            className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
-            aria-label="Stop replay"
-            title="Stop replay"
-            onClick={() => inputs.changeMode("usb")}
+            className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+            aria-label="Save session"
+            title="Save session"
+            disabled={!inputs.frames.length || inputs.recording}
+            onClick={inputs.download}
           >
-            <SessionIcon kind="stop" />
+            <SessionIcon kind="save" />
           </button>
-        )}
-        <button
-          className={`${button} inline-flex h-8 w-8 items-center justify-center hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
-          aria-label="Save session"
-          title="Save session"
-          disabled={!inputs.frames.length || inputs.recording}
-          onClick={inputs.download}
-        >
-          <SessionIcon kind="save" />
-        </button>
-        <label className={button}>
-          Load session
-          <input
-            className="hidden"
-            type="file"
-            accept="application/json,.json"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void inputs.loadRecording(file);
-              e.target.value = "";
-            }}
-          />
-        </label>
+          <label className={button}>
+            Load session
+            <input
+              className="hidden"
+              type="file"
+              accept="application/json,.json"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void inputs.loadRecording(file);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
       </div>
     </section>
   );

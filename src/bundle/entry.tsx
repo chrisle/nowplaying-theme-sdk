@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { EnrichedTrack } from "../types";
 import { USER_THEMES } from "../registry";
@@ -65,6 +65,7 @@ function App({ themeId }: { themeId: string }) {
   }
 
   const [track, setTrack] = useState<EnrichedTrack | null>(null);
+  const readyAnnounced = useRef(false);
 
   useEffect(() => {
     function onMessage(event: MessageEvent<NPMessage>) {
@@ -78,11 +79,15 @@ function App({ themeId }: { themeId: string }) {
       }
     }
     window.addEventListener("message", onMessage);
-    // Announce readiness so the host can re-send any state it has buffered.
-    window.parent?.postMessage(
-      { type: "np:ready", protocol: PROTOCOL_VERSION },
-      "*",
-    );
+    // StrictMode replays effects in development. Announce once so the host
+    // does not resend its buffered state twice.
+    if (!readyAnnounced.current) {
+      readyAnnounced.current = true;
+      window.parent?.postMessage(
+        { type: "np:ready", protocol: PROTOCOL_VERSION },
+        "*",
+      );
+    }
     return () => window.removeEventListener("message", onMessage);
   }, []);
 

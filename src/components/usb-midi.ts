@@ -53,6 +53,7 @@ export function useUsbMidi(
       return;
     }
     requesting.current = true;
+    setStatus("Requesting MIDI access… If no permission prompt appears, open the SDK in Chrome or Edge.");
     try {
       const next =
         accessRef.current ??

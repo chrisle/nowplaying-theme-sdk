@@ -1,3 +1,9 @@
+import type { ThemeMeta } from "../theme";
+export const meta: ThemeMeta = {
+  id: "defcon",
+  name: "Defcon",
+  events: ["track"],
+};
 import { EnrichedTrack } from "../types";
 import { motion, useAnimation } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -187,7 +193,11 @@ function TypeReveal({
           className="ml-[3px] inline-block w-[0.45em]"
           style={{ height: "0.9em", backgroundColor: caretColor }}
           animate={{ opacity: [1, 1, 0, 0] }}
-          transition={{ duration: 1, repeat: Infinity, times: [0, 0.5, 0.5, 1] }}
+          transition={{
+            duration: 1,
+            repeat: Infinity,
+            times: [0, 0.5, 0.5, 1],
+          }}
         />
       )}
     </span>
@@ -405,7 +415,6 @@ function DefconTheme({
   const displayArtist = hackerText ? toLeet(artist) : artist;
   const displayLabel = label && hackerText ? toLeet(label) : label;
 
-
   // Load the HUD fonts once, shared by every instance of this theme
   useEffect(() => {
     if (document.getElementById(FONT_LINK_ID)) return;
@@ -599,7 +608,11 @@ function DefconTheme({
               backgroundColor: accentColor,
             }}
             variants={{
-              in: { scale: 1, opacity: 1, transition: { duration: 0.2, delay: 0.5 } },
+              in: {
+                scale: 1,
+                opacity: 1,
+                transition: { duration: 0.2, delay: 0.5 },
+              },
               out: { scale: 0, opacity: 0, transition: { duration: 0.15 } },
             }}
             initial="in"
@@ -727,7 +740,11 @@ function DefconTheme({
                 className="ml-1 inline-block h-[5px] w-[5px] flex-shrink-0"
                 style={{ backgroundColor: panelColor }}
                 animate={{ opacity: [1, 1, 0.15, 1] }}
-                transition={{ duration: 2.2, repeat: Infinity, times: [0, 0.82, 0.9, 1] }}
+                transition={{
+                  duration: 2.2,
+                  repeat: Infinity,
+                  times: [0, 0.82, 0.9, 1],
+                }}
               />
               {/* Diagonal hatch block against the slanted edge */}
               <span
@@ -859,7 +876,10 @@ function DefconTheme({
               </div>
               <div
                 className="flex items-center gap-3 text-[11px] uppercase"
-                style={{ color: alpha(paperColor, "66"), fontFamily: MONO_FONT }}
+                style={{
+                  color: alpha(paperColor, "66"),
+                  fontFamily: MONO_FONT,
+                }}
               >
                 <span>RSD-2077.270-Y</span>
                 <span>✳</span>

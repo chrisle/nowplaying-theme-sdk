@@ -1,3 +1,9 @@
+import type { ThemeMeta } from "../theme";
+export const meta: ThemeMeta = {
+  id: "clean",
+  name: "Clean",
+  events: ["track"],
+};
 import { EnrichedTrack } from "../types";
 import { motion, useAnimation } from "framer-motion";
 import { useEffect } from "react";

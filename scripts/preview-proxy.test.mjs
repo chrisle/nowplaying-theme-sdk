@@ -18,8 +18,7 @@ test("SDK proxy injects auth without exposing the token and rejects remote calle
   themePreviewPlugin(token, upstream.address().port).configureServer({
     middlewares: {
       use(path, handler) {
-        assert.equal(path, "/__np3/events");
-        middleware = handler;
+        if (path === "/__np3/events") middleware = handler;
       },
     },
   });

@@ -1,4 +1,4 @@
-import { ControllerMixer } from "./mixer";
+import { useUsbMidi } from "./usb-midi";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EnrichedTrack } from "../types";
 import {
@@ -13,13 +13,12 @@ import {
   type ThemeMessage,
 } from "../events";
 import {
-  DECK_CONTROLS,
   moveSimulatedControl,
   simulatedController,
   simulatedMix,
 } from "./simulated-events";
 
-type InputMode = "simulation" | "live" | "replay";
+type InputMode = "usb" | "simulation" | "live" | "replay";
 const button =
   "bg-zinc-800 text-white border border-zinc-700 rounded px-2 py-1 text-xs";
 
@@ -27,7 +26,7 @@ export function useThemeInputs(
   track: EnrichedTrack,
   events?: readonly ThemeEvent[],
 ) {
-  const [mode, setMode] = useState<InputMode>("simulation");
+  const [mode, setMode] = useState<InputMode>("usb");
   const [state, setState] = useState<ThemeEventState>(EMPTY_EVENTS);
   const [status, setStatus] = useState("Simulated controls");
   const [frames, setFrames] = useState<RecordedFrame[]>([]);
@@ -58,7 +57,7 @@ export function useThemeInputs(
   useEffect(() => {
     setState(EMPTY_EVENTS);
     if (mode === "simulation") {
-      setStatus("Simulated controls — mix scores are mocked");
+      setStatus("Sample mixer — mix scores are mocked");
       apply({ type: "np:controller", protocol: 1, controller: sim.current });
       apply({ type: "np:mix", protocol: 1, state: simulatedMix(sim.current) });
     }
@@ -121,6 +120,20 @@ export function useThemeInputs(
     animation = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animation);
   }, [mode, playing, frames, apply]);
+
+  const receiveUsb = useCallback(
+    (controller: import("../events").ThemeControllerSnapshot | null) => {
+      apply({ type: "np:controller", protocol: 1, controller });
+    },
+    [apply],
+  );
+  const usb = useUsbMidi(mode === "usb", receiveUsb);
+  useEffect(() => {
+    if (mode === "usb") {
+      apply({ type: "np:mix", protocol: 1, state: null });
+      apply({ type: "np:track", protocol: 1, track, connected: true });
+    }
+  }, [mode, track, apply]);
 
   const stopRecording = () => {
     const capture = recordRef.current;
@@ -189,6 +202,7 @@ export function useThemeInputs(
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   return {
+    usb,
     props: subscribedProps(state, events),
     state,
     mode,
@@ -211,9 +225,6 @@ export function EventInputs({
 }: {
   inputs: ReturnType<typeof useThemeInputs>;
 }) {
-  const [deck, setDeck] = useState(1);
-  const state = inputs.state.controller?.state;
-  const selected = state?.[`deck${deck}` as "deck1"];
   return (
     <section
       className="p-4 border-b border-zinc-800 text-zinc-300 text-xs space-y-3"
@@ -227,68 +238,55 @@ export function EventInputs({
           value={inputs.mode}
           onChange={(e) => inputs.changeMode(e.target.value as InputMode)}
         >
-          <option value="simulation">Simulated mixer</option>
+          <option value="usb">USB MIDI device</option>
+          <option value="simulation">Sample mixer</option>
           <option value="live">Now Playing / MIDI</option>
           <option value="replay">Recorded session</option>
         </select>
       </label>
       <p role="status" className="text-zinc-400">
-        {inputs.status}
+        {inputs.mode === "usb" ? inputs.usb.status : inputs.status}
       </p>
-      <ControllerMixer
-        snapshot={inputs.state.controller}
-        onChange={inputs.mode === "simulation" ? inputs.move : undefined}
-      />
-      {inputs.mode === "simulation" && (
-        <>
-          <label className="flex justify-between">
-            Deck
+      {inputs.mode === "usb" && (
+        <div className="space-y-3">
+          <button className={button} onClick={() => void inputs.usb.connect()}>
+            Connect USB MIDI
+          </button>
+          <label className="flex flex-col gap-1">
+            USB MIDI device
             <select
               className={button}
-              value={deck}
-              onChange={(e) => setDeck(Number(e.target.value))}
+              value={inputs.usb.deviceId}
+              onChange={(event) => inputs.usb.selectDevice(event.target.value)}
             >
-              {[1, 2, 3, 4].map((n) => (
-                <option key={n} value={n}>
-                  {n}
+              <option value="">Select a device</option>
+              {inputs.usb.devices.map((device) => (
+                <option key={device.id} value={device.id}>
+                  {device.name ?? device.id}
                 </option>
               ))}
             </select>
           </label>
-          {DECK_CONTROLS.filter(
-            ([key]) => key === "trim" || key === "tempo",
-          ).map(([key, label, min, max]) => (
-            <label key={key} className="block">
-              <span>
-                {label}: {(selected?.[key] ?? 0).toFixed(2)}
-              </span>
-              <input
-                aria-label={`Deck ${deck} ${label}`}
-                className="block w-full"
-                type="range"
-                min={min}
-                max={max}
-                step="0.01"
-                value={selected?.[key] ?? 0}
-                onChange={(e) =>
-                  inputs.move(`deck${deck}.${key}`, Number(e.target.value))
+          {inputs.usb.deviceId && (
+            <label className="flex flex-col gap-1">
+              Controller mapping
+              <select
+                className={button}
+                value={inputs.usb.mappingId}
+                onChange={(event) =>
+                  inputs.usb.setMappingId(event.target.value)
                 }
-              />
+              >
+                <option value="">Auto-detect</option>
+                {inputs.usb.mappings.map((mapping) => (
+                  <option key={mapping.hashId} value={mapping.hashId}>
+                    {mapping.name}
+                  </option>
+                ))}
+              </select>
             </label>
-          ))}
-          {["playing", "cueActive", "jogTouching"].map((key) => (
-            <label key={key} className="flex justify-between">
-              {key}
-              <input
-                type="checkbox"
-                checked={Boolean(selected?.[key as "playing"])}
-                onChange={(e) =>
-                  inputs.move(`deck${deck}.${key}`, e.target.checked)
-                }
-              />
-            </label>
-          ))}
-        </>
+          )}
+        </div>
       )}
       {inputs.state.controller && (
         <p>
@@ -318,7 +316,7 @@ export function EventInputs({
         {inputs.playing && (
           <button
             className={button}
-            onClick={() => inputs.changeMode("simulation")}
+            onClick={() => inputs.changeMode("usb")}
           >
             Stop replay
           </button>

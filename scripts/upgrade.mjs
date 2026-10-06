@@ -77,6 +77,7 @@ export const SDK_PATHS = [
   "src/events.ts",
   "src/controller-types.ts",
   "src/mix-types.ts",
+  "src/midi",
   "src/discover.ts",
   "src/registry.ts",
   "src/examples-registry.ts",

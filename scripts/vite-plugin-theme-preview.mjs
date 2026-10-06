@@ -5,6 +5,44 @@ export function themePreviewPlugin(token, port = 17831) {
   return {
     name: "np3-theme-preview",
     configureServer(server) {
+      // The public NP3 catalog contains mappings only; USB names never leave the SDK.
+      server.middlewares.use("/__np3/mappings", async (request, response) => {
+        const host = request.headers.host ?? "";
+        if (
+          !/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host) ||
+          (request.headers.origin &&
+            request.headers.origin !== `http://${host}`)
+        ) {
+          response.writeHead(403).end();
+          return;
+        }
+        if (
+          request.method !== "GET" ||
+          !/^\/(?:[a-f0-9]{12})?$/.test(request.url ?? "")
+        ) {
+          response.writeHead(404).end();
+          return;
+        }
+        try {
+          const suffix = request.url === "/" ? "" : request.url;
+          const upstream = await fetch(
+            `https://app.nowplayingapp.com/api/midi/mappings${suffix}`,
+            {
+              signal: AbortSignal.timeout(10000),
+              headers: { Accept: "application/json" },
+            },
+          );
+          response.writeHead(upstream.status, {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store",
+          });
+          response.end(await upstream.text());
+        } catch {
+          response
+            .writeHead(503)
+            .end('{"error":"Controller catalog unavailable"}');
+        }
+      });
       server.middlewares.use("/__np3/events", (request, response) => {
         const host = request.headers.host ?? "";
         if (
